@@ -1,0 +1,58 @@
+server:
+  port: 8080
+  servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+
+spring:
+  application:
+    name: fdelab-server
+  profiles:
+    active: dev
+  jackson:
+    time-zone: Asia/Shanghai
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      id-type: assign_id
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+sa-token:
+  token-name: Authorization
+  token-prefix: Bearer
+  timeout: 86400
+  active-timeout: -1
+  is-concurrent: true
+  is-share: false
+  token-style: uuid
+  is-log: false
+  is-read-cookie: false
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+fdelab:
+  site:
+    name: FDELab
+    slogan: 实验、内容与业务的统一入口
+    intro: 这是 FDELab 的展示站骨架。官网、小程序和后台共用同一套接口，业务模块可以按包继续往下加。
+  talent:
+    domain: fdelab.io
+    skill-key: fdelab-dev-skill-key
