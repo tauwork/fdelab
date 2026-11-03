@@ -1,5 +1,6 @@
 package com.fdelab.module.talent.model;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import lombok.Data;
 
 import java.util.ArrayList;
@@ -11,6 +12,8 @@ public class TalentProfile {
     private List<String> badges = new ArrayList<>();
     private List<String> identityTags = new ArrayList<>();
     private List<String> industryTags = new ArrayList<>();
+    @JsonAlias("domainTags")
+    private List<String> domains = new ArrayList<>();
     private List<RoleItem> roles = new ArrayList<>();
     private List<TextItem> experiences = new ArrayList<>();
     private List<TextItem> services = new ArrayList<>();
@@ -35,6 +38,8 @@ public class TalentProfile {
         private String industry;
         private String title;
         private String portrait;
+        private String budget;
+        private String duration;
         private List<String> points = new ArrayList<>();
         private String delivery;
     }

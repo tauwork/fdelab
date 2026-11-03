@@ -23,8 +23,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 @Service
@@ -216,11 +218,38 @@ public class TalentService extends ServiceImpl<FdeTalentMapper, FdeTalent> {
     }
 
     private TalentVO toVo(FdeTalent talent, boolean liked, boolean withContact, boolean withProfile) {
-        TalentProfile profile = withProfile ? readProfile(talent.getProfileJson()) : new TalentProfile();
-        if (!withProfile) {
-            profile.setBadges(readProfile(talent.getProfileJson()).getBadges());
-        }
+        TalentProfile profile = withProfile
+                ? readProfile(talent.getProfileJson())
+                : readListProfile(talent.getProfileJson());
         return TalentVO.of(talent, talentProperties.homepage(talent.getSlug()), liked, profile, withContact);
+    }
+
+    private TalentProfile readListProfile(String json) {
+        TalentProfile full = readProfile(json);
+        TalentProfile summary = new TalentProfile();
+        summary.setBadges(copy(full.getBadges()));
+        summary.setIdentityTags(copy(full.getIdentityTags()));
+        summary.setIndustryTags(copy(full.getIndustryTags()));
+        summary.setDomains(copy(full.getDomains()));
+        summary.setCases(full.getCases() == null ? List.of() : full.getCases().stream()
+                .filter(Objects::nonNull)
+                .map(TalentService::caseSummary)
+                .toList());
+        return summary;
+    }
+
+    private static <T> List<T> copy(List<T> source) {
+        return source == null ? List.of() : new ArrayList<>(source);
+    }
+
+    private static TalentProfile.CaseItem caseSummary(TalentProfile.CaseItem item) {
+        TalentProfile.CaseItem summary = new TalentProfile.CaseItem();
+        summary.setIndustry(item.getIndustry());
+        summary.setTitle(item.getTitle());
+        summary.setBudget(item.getBudget());
+        summary.setDuration(item.getDuration());
+        summary.setPoints(null);
+        return summary;
     }
 
     private Set<Long> likedIds(List<FdeTalent> talents, String visitorKey) {

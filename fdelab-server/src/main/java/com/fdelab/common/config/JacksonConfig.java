@@ -1,5 +1,6 @@
 package com.fdelab.common.config;
 
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
 import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer;
 import org.springframework.boot.autoconfigure.jackson.Jackson2ObjectMapperBuilderCustomizer;
@@ -18,6 +19,10 @@ public class JacksonConfig {
     public Jackson2ObjectMapperBuilderCustomizer dateTimeCustomizer() {
         return builder -> builder
                 .serializerByType(LocalDateTime.class, new LocalDateTimeSerializer(FORMATTER))
-                .deserializerByType(LocalDateTime.class, new LocalDateTimeDeserializer(FORMATTER));
+                .deserializerByType(LocalDateTime.class, new LocalDateTimeDeserializer(FORMATTER))
+                // Long 超过 JS 安全整数（2^53-1）会丢精度：雪花 ID 约 2.1e18，
+                // 序列化为字符串，保证前端拿到的 id 与库中一致
+                .serializerByType(Long.class, ToStringSerializer.instance)
+                .serializerByType(Long.TYPE, ToStringSerializer.instance);
     }
 }
