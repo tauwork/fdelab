@@ -21,3 +21,9 @@ logs/
 
 .env
 .env.*.local
+
+# WorkBuddy 会话数据（记忆/日志/临时文件）
+.workbuddy/
+
+# 构建脚本临时产物
+demo/__*
