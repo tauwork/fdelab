@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FDELab · 人才清单原型</title>
+<style>
+  :root {
+    --ink: #17241e;
+    --muted: #5e6a63;
+    --paper: #f4f1ea;
+    --card: #fffdf8;
+    --line: #e3dccf;
+    --accent: #1f6b4a;
+    --gold: #c4a574;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Avenir Next", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #field { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; }
+  .wrap { position: relative; z-index: 1; padding: 34px 6vw 90px; max-width: 1320px; margin: 0 auto; }
+
+  .topbar { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 34px; }
+  .brand { font-family: "Iowan Old Style", Palatino, "Songti SC", serif; font-size: 22px; letter-spacing: .05em; }
+  .breadcrumb { font-size: 12.5px; color: var(--muted); letter-spacing: .06em; }
+
+  header.head { margin-bottom: 30px; }
+  .kicker { font-size: 11px; letter-spacing: .26em; color: var(--gold); margin: 0 0 12px; }
+  h1 { font-family: "Iowan Old Style", Palatino, "Songti SC", serif; font-size: 54px; font-weight: 500; margin: 0; letter-spacing: .01em; line-height: 1.1; }
+  .lead { margin: 14px 0 0; color: var(--muted); font-size: 14.5px; line-height: 1.75; max-width: 660px; }
+  .stats { display: flex; gap: 10px; align-items: center; margin-top: 16px; font-size: 12px; color: var(--muted); letter-spacing: .06em; flex-wrap: wrap; }
+  .stats b { font-size: 12px; color: var(--ink); font-weight: 500; margin-right: 3px; font-variant-numeric: tabular-nums; }
+  .stats .sep { width: 3px; height: 3px; border-radius: 50%; background: var(--gold); opacity: .6; }
+
+  .toolbar {
+    display: flex; flex-wrap: wrap; gap: 14px 20px; align-items: flex-end; justify-content: space-between;
+    margin: 36px 0 28px; padding-bottom: 0; border-bottom: 1px solid var(--line);
+  }
+  .tabs { display: flex; flex-wrap: wrap; gap: 20px; }
+  .tab {
+    position: relative; border: 0; background: none; padding: 0 0 14px;
+    font-family: inherit; font-size: 13px; color: var(--muted); cursor: pointer;
+    letter-spacing: .02em; transition: color .2s ease;
+  }
+  .tab:hover { color: var(--ink); }
+  .tab.on { color: var(--ink); }
+  .tab.on::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: var(--accent); }
+  .right { display: flex; gap: 18px; align-items: center; padding-bottom: 10px; }
+
+  .pick { position: relative; }
+  .pick-btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    border: 0; background: none; padding: 5px 0; font-family: inherit;
+    font-size: 12.5px; color: var(--muted); cursor: pointer; letter-spacing: .02em;
+    transition: color .2s ease;
+  }
+  .pick-btn:hover, .pick.open .pick-btn { color: var(--ink); }
+  .pick.picked .pick-btn { color: var(--accent); }
+  .chev {
+    width: 6px; height: 6px; border-right: 1px solid currentColor; border-bottom: 1px solid currentColor;
+    transform: rotate(45deg) translate(-1px, -1px); opacity: .65;
+    transition: transform .22s ease, opacity .22s ease;
+  }
+  .pick.open .chev { transform: rotate(-135deg) translate(-1px, -1px); opacity: 1; }
+  .pick-panel {
+    position: absolute; right: 0; top: calc(100% + 9px); min-width: 208px;
+    background: #fffdf8; border: 1px solid rgba(227,220,207,.9); border-radius: 12px;
+    box-shadow: 0 1px 0 rgba(255,255,255,.9) inset, 0 20px 42px -24px rgba(23,36,30,.45);
+    padding: 7px; z-index: 30; display: none;
+  }
+  .pick.open .pick-panel { display: block; animation: pickIn .18s ease-out both; }
+  @keyframes pickIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .pick.open .pick-panel { animation: none; } }
+  .pick-item {
+    display: flex; align-items: center; gap: 9px; width: 100%;
+    border: 0; background: none; text-align: left; font-family: inherit;
+    font-size: 12.5px; color: #4c574f; padding: 7px 9px 7px 7px; border-radius: 7px; cursor: pointer;
+    transition: background .14s ease, color .14s ease;
+  }
+  .pick-item:hover { background: rgba(31,107,74,.07); color: var(--ink); }
+  .pick-item .tick { width: 4px; height: 4px; border-radius: 50%; background: transparent; flex-shrink: 0; }
+  .pick-item.on { color: var(--ink); }
+  .pick-item.on .tick { background: var(--gold); }
+
+  input.search {
+    border: 0; border-bottom: 1px solid var(--line); background: transparent; border-radius: 0;
+    padding: 5px 2px; font-size: 12.5px; width: 150px; color: var(--ink); font-family: inherit;
+    outline: none; transition: border-color .2s ease;
+  }
+  input.search::placeholder { color: #a8b0aa; }
+  input.search:focus { border-color: var(--accent); }
+  .count { font-size: 11.5px; color: var(--muted); letter-spacing: .08em; white-space: nowrap; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 30px 28px; perspective: 1400px; }
+  /* 一屏填满模式：行数由 JS 按视口高度算出，grid 高度锁定，行均分 */
+  .grid.fill { grid-auto-rows: 1fr; }
+  .grid.fill .role {
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 0;
+  }
+  .grid.fill .case .ctitle {
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .grid.fill .tags { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* 右下角常驻页码：翻页模式的"位置感" */
+  .minipager {
+    position: fixed; right: 24px; bottom: 20px; z-index: 25;
+    display: none; align-items: center; gap: 1px;
+    background: rgba(255,253,248,.94); border: 1px solid var(--line); border-radius: 999px;
+    padding: 4px 6px; box-shadow: 0 12px 30px -18px rgba(23,36,30,.45);
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  }
+  .minipager.show { display: flex; }
+  .minipager button {
+    border: 0; background: none; cursor: pointer; font-family: inherit; color: var(--muted);
+    font-size: 13px; min-width: 24px; height: 24px; border-radius: 999px; line-height: 1;
+    transition: all .15s ease;
+  }
+  .minipager button:hover:not(:disabled) { color: var(--ink); background: rgba(31,107,74,.08); }
+  .minipager button:disabled { opacity: .28; cursor: default; }
+  .minipager .mnum {
+    font-size: 11.5px; color: var(--muted); padding: 0 5px; letter-spacing: .06em;
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .minipager .mnum b { color: var(--accent); font-weight: 500; font-size: 12.5px; }
+
+  .card {
+    position: relative; display: flex; flex-direction: column; height: 100%;
+    transform-style: preserve-3d; will-change: transform;
+    background-color: #fffdf8;
+    background-image:
+      radial-gradient(ellipse 64% 50% at 18% 8%, rgba(31,107,74,.075), transparent 62%),
+      radial-gradient(ellipse 58% 46% at 90% 92%, rgba(196,165,116,.15), transparent 62%),
+      linear-gradient(168deg, #fffdf8, #fcf8f0);
+    border: 0; border-radius: 12px;
+    padding: 26px 26px 20px; cursor: pointer;
+    box-shadow:
+      0 1px 2px rgba(23,36,30,.05),
+      0 16px 34px -26px rgba(23,36,30,.30),
+      0 1px 0 rgba(255,255,255,.9) inset;
+    transition: box-shadow .35s ease;
+  }
+  .card::before {
+    content: ""; position: absolute; inset: 0; border-radius: inherit; z-index: 0; pointer-events: none;
+    background-image:
+      linear-gradient(rgba(31,107,74,.045) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(31,107,74,.045) 1px, transparent 1px);
+    background-size: 24px 24px; background-position: center;
+    -webkit-mask-image: radial-gradient(ellipse 88% 74% at 50% 36%, #000 10%, transparent 78%);
+    mask-image: radial-gradient(ellipse 88% 74% at 50% 36%, #000 10%, transparent 78%);
+  }
+  .card > *:not(.shine) { position: relative; z-index: 1; }
+  .card .shine {
+    position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+    transform: translateZ(48px) scale(.95);
+    background: radial-gradient(circle 150px at var(--mx, 50%) var(--my, 40%),
+      rgba(255,255,255,.85) 0%, rgba(196,165,116,.62) 22%, transparent 62%);
+    mix-blend-mode: soft-light; opacity: 0; transition: opacity .4s ease;
+  }
+  .card:hover .shine { opacity: .9; }
+  .card:hover {
+    box-shadow:
+      0 1px 2px rgba(23,36,30,.06),
+      0 28px 50px -30px rgba(23,36,30,.40),
+      0 1px 0 rgba(255,255,255,.9) inset;
+  }
+  .card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; transform: translateZ(18px); }
+  .mark { font-size: 9.5px; letter-spacing: .24em; color: var(--gold); }
+  .city { font-size: 11px; color: var(--muted); white-space: nowrap; letter-spacing: .04em; }
+
+  .name {
+    transform: translateZ(26px);
+    font-family: "Iowan Old Style", Palatino, "Songti SC", serif;
+    font-size: 29px; font-weight: 500; margin: 18px 0 6px; letter-spacing: .02em; line-height: 1.15;
+  }
+  .role { transform: translateZ(22px); font-size: 12.5px; color: var(--accent); line-height: 1.55; min-height: 20px; }
+
+  .meta { transform: translateZ(16px); margin-top: 14px; font-size: 11px; color: var(--muted); letter-spacing: .1em; }
+  .meta b { color: var(--ink); font-weight: 500; font-variant-numeric: tabular-nums; }
+  .tags { transform: translateZ(14px); margin-top: 8px; font-size: 11.5px; color: #6d786f; line-height: 1.7; }
+  .dotsep { color: var(--gold); margin: 0 6px; opacity: .75; }
+  .tags .dm { color: #8a7a5e; }
+
+  .case {
+    transform: translateZ(8px);
+    margin-top: 20px; padding-left: 14px; border-left: 2px solid rgba(31,107,74,.3);
+  }
+  .case .clabel { font-size: 9.5px; color: var(--gold); letter-spacing: .2em; }
+  .case .ctitle {
+    font-family: "Iowan Old Style", Palatino, "Songti SC", serif;
+    font-size: 15px; line-height: 1.6; margin-top: 7px; color: var(--ink);
+  }
+  .case .cbudget { font-size: 11.5px; color: var(--muted); margin-top: 7px; letter-spacing: .02em; }
+  .case.empty { border-left-color: rgba(196,165,116,.45); color: var(--muted); font-size: 12px; line-height: 1.7; }
+
+  .foot { transform: translateZ(12px); display: flex; gap: 18px; align-items: center; margin-top: auto; padding-top: 24px; }
+  .btn {
+    border: 0; background: none; padding: 0; color: var(--muted);
+    font-size: 12px; cursor: pointer; font-family: inherit; letter-spacing: .02em;
+    transition: color .18s ease;
+  }
+  .btn:hover { color: var(--accent); }
+  .btn.solid { color: var(--accent); font-weight: 500; }
+  .btn.solid:hover { color: #164b34; }
+  .btn.solid:hover { background: #1a5b3f; color: #fff; }
+  .foot .like { margin-left: auto; }
+
+  .empty-state { padding: 60px 20px; text-align: center; color: var(--muted); border: 1px dashed var(--line); border-radius: 16px; }
+
+  .drawer-mask {
+    position: fixed; inset: 0; background: rgba(23,36,30,.34); backdrop-filter: blur(3px);
+    display: none; z-index: 40; align-items: stretch; justify-content: flex-end;
+  }
+  .drawer-mask.open { display: flex; }
+  .drawer {
+    width: min(520px, 100%); background: var(--paper); height: 100%; overflow-y: auto;
+    padding: 30px 32px 60px; box-shadow: -30px 0 60px -30px rgba(0,0,0,.4);
+    transform: translateX(24px); opacity: 0; transition: all .26s ease;
+  }
+  .drawer-mask.open .drawer { transform: none; opacity: 1; }
+  .drawer .close { float: right; border: 0; background: transparent; font-size: 20px; color: var(--muted); cursor: pointer; line-height: 1; }
+  .drawer .drole { font-size: 13px; color: var(--accent); margin-top: 4px; }
+  .drawer h2 { font-family: "Iowan Old Style", Palatino, "Songti SC", serif; font-size: 34px; font-weight: 500; margin: 6px 0 0; }
+  .dsec { margin-top: 26px; }
+  .dsec h3 { font-size: 12px; letter-spacing: .12em; color: var(--gold); margin: 0 0 10px; font-weight: 500; }
+  .dsec p { margin: 0 0 8px; font-size: 13.2px; line-height: 1.75; color: #2c3731; }
+  .dsec p b { font-weight: 500; }
+  .dcase { border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; background: var(--card); margin-bottom: 10px; }
+  .dcase .ind { font-size: 11px; color: var(--accent); }
+  .dcase h4 { margin: 4px 0 6px; font-size: 14.5px; font-weight: 500; }
+  .dcase ul { margin: 6px 0 0; padding-left: 16px; font-size: 12.6px; color: #46524c; line-height: 1.7; }
+  .dcase .meta { margin-top: 8px; font-size: 11.8px; color: var(--muted); }
+  .drawer .cta { margin-top: 26px; display: flex; gap: 10px; }
+  .drawer .cta .btn { border: 1px solid var(--line); padding: 8px 15px; border-radius: 999px; color: var(--ink); }
+  .drawer .cta .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .drawer .cta .btn.solid { background: var(--accent); border-color: var(--accent); color: var(--paper); }
+  .drawer .cta .btn.solid:hover { background: #164b34; color: #fff; }
+  .dsec .tag {
+    display: inline-block; font-size: 11.5px; border-radius: 999px; padding: 4px 10px;
+    border: 1px solid var(--line); color: var(--muted); background: rgba(255,255,255,.55); margin-right: 6px;
+  }
+  .dsec .tag.domain { border-style: dashed; color: #7a6a4f; border-color: #e0d3ba; }
+
+  @media (max-width: 640px) {
+    h1 { font-size: 38px; }
+    .toolbar { flex-direction: column; align-items: stretch; }
+    .tabs { gap: 16px; }
+    .right { width: 100%; flex-wrap: wrap; gap: 12px; padding-bottom: 12px; }
+    .pick-panel { right: auto; left: 0; }
+    input.search { width: 100%; }
+    .card { padding: 22px 20px 18px; }
+    .name { font-size: 25px; }
+  }
+
+  /* ===== 100 条验证版：sticky 筛选 / 双视图 / 分页 ===== */
+  .toolbar {
+    position: sticky; top: 0; z-index: 20;
+    background: rgba(244,241,234,.95);
+    -webkit-backdrop-filter: blur(10px) saturate(1.05); backdrop-filter: blur(10px) saturate(1.05);
+  }
+  .viewtoggle { display: inline-flex; align-items: center; gap: 11px; }
+  .vbtn {
+    border: 0; background: none; font-family: inherit; font-size: 12px; color: var(--muted);
+    cursor: pointer; padding: 5px 0; letter-spacing: .02em; position: relative;
+    transition: color .18s ease;
+  }
+  .vbtn:hover { color: var(--ink); }
+  .vbtn.on { color: var(--ink); }
+  .vbtn.on::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: var(--accent); }
+  .vsep { width: 1px; height: 11px; background: var(--line); }
+
+  .list { border-top: 1px solid var(--line); }
+  .row {
+    display: grid;
+    grid-template-columns: 92px minmax(150px, 1fr) minmax(170px, 1.05fr) 40px minmax(150px, 1.45fr) 14px;
+    gap: 18px; align-items: center;
+    padding: 15px 6px 15px 0; border-bottom: 1px solid rgba(227,220,207,.55);
+    cursor: pointer; transition: background .16s ease;
+  }
+  .row:hover { background: rgba(255,253,248,.8); }
+  .row .rname { font-family: "Iowan Old Style", Palatino, "Songti SC", serif; font-size: 16.5px; letter-spacing: .02em; }
+  .row .rrole { font-size: 12px; color: var(--accent); line-height: 1.45; }
+  .row .rtags { font-size: 11.5px; color: #6d786f; line-height: 1.6; }
+  .row .rcase { font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; text-align: right; }
+  .row .rcase b { color: var(--ink); font-weight: 500; }
+  .row .rrep { font-size: 12.5px; line-height: 1.5; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row .rrep.empty { color: #a8b0aa; }
+  .row .rgo { color: var(--gold); font-size: 13px; opacity: 0; transition: opacity .16s ease; }
+  .row:hover .rgo { opacity: 1; }
+
+  .pager {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--line); flex-wrap: wrap;
+  }
+  .pmeta { font-size: 11.5px; color: var(--muted); letter-spacing: .05em; font-variant-numeric: tabular-nums; }
+  .pnums { display: flex; align-items: center; gap: 3px; }
+  .pnum {
+    border: 0; background: none; font-family: inherit; font-size: 12px; color: var(--muted);
+    cursor: pointer; min-width: 27px; height: 27px; padding: 0 7px; border-radius: 7px;
+    transition: all .16s ease; font-variant-numeric: tabular-nums;
+  }
+  .pnum:hover:not(:disabled):not(.on) { color: var(--ink); background: rgba(31,107,74,.07); }
+  .pnum.on { color: var(--paper); background: var(--accent); }
+  .pnum:disabled { opacity: .28; cursor: default; }
+  .pnote { font-size: 11px; color: var(--gold); letter-spacing: .1em; margin-top: 10px; }
+
+  @media (max-width: 900px) {
+    .row { grid-template-columns: 84px 1fr 36px 14px; gap: 14px; }
+    .row .rtags, .row .rrep { display: none; }
+  }
+  @media (max-width: 640px) {
+    .row { grid-template-columns: 1fr 36px; }
+    .row .rrole { display: none; }
+    .vsep { display: none; }
+  }
+</style>
+</head>
+<body>
+<canvas id="field"></canvas>
+
+<div class="wrap">
+  <div class="topbar">
+    <span class="brand">FDELab</span>
+    <span class="breadcrumb">人才 · 100 条验证</span>
+  </div>
+
+  <header class="head">
+    <p class="kicker">FDELAB · TALENT</p>
+    <h1>人才</h1>
+    <p class="lead">每位 FDE 有自己的子域名主页，卡上的数字都能追溯到案例库。没有案例的人，我们诚实留白。</p>
+    <div class="stats">
+      <span><b id="s-people">0</b>位 FDE</span><span class="sep"></span>
+      <span><b id="s-ind">0</b>个行业</span><span class="sep"></span>
+      <span><b id="s-case">0</b>个交付案例</span><span class="sep"></span><span style="color:#a08b63">含 97 条测试数据，仅用于验证规模</span>
+    </div>
+  </header>
+
+  <div class="toolbar">
+    <nav class="tabs" id="industryTabs"></nav>
+    <div class="right">
+      <div class="pick" id="domainPick">
+        <button class="pick-btn" type="button" aria-haspopup="listbox" aria-expanded="false">
+          <span class="pick-label">能力域</span><i class="chev" aria-hidden="true"></i>
+        </button>
+        <div class="pick-panel" role="listbox" aria-label="能力域"></div>
+      </div>
+      <div class="pick" id="sortPick">
+        <button class="pick-btn" type="button" aria-haspopup="listbox" aria-expanded="false">
+          <span class="pick-label">按点赞</span><i class="chev" aria-hidden="true"></i>
+        </button>
+        <div class="pick-panel" role="listbox" aria-label="排序"></div>
+      </div>
+      <input class="search" id="search" type="search" placeholder="搜名字或能力…" />
+      <span class="viewtoggle">
+        <span class="vsep"></span>
+        <button class="vbtn on" type="button" data-view="card">卡片</button>
+        <button class="vbtn" type="button" data-view="list">列表</button>
+      </span>
+      <span class="count" id="count"></span>
+    </div>
+  </div>
+
+  <div class="grid" id="grid"></div>
+  <div class="list" id="list" style="display:none"></div>
+  <div class="pager" id="pager"></div>
+  <div class="empty-state" id="empty" style="display:none">没有符合条件的人，换个行业看看。</div>
+</div>
+
+<div class="minipager" id="minipager" aria-label="翻页"></div>
+
+<div class="drawer-mask" id="mask">
+  <div class="drawer" id="drawer"></div>
+</div>
+
+<script>
+const HOST = "http://localhost:5174";
+
+const people = [{"name":"蒋利文","slug":"jiangliwen","city":"深圳","likes":19,"role":"企业数智化转型导师 · FDE 智研社主理人","industries":["离散制造","公用事业","跨境企业服务"],"domains":["AI 转型规划","ERP / MES 选型","战略落地"],"roles":[["Tauwork 韬工智能","联合创始人","Agent 集成工厂"],["数智化转型实战讲师顾问","企业培训 + 顾问陪跑","从战略规划到落地交付"],["FDE 智研社","主理人","聚焦 AI 落地的最后一公里"]],"experiences":[["大厂历练","先后任职于华为、腾讯、网易，深耕企业级产品与技术体系"],["企业数字化操盘","曾任泽宝、德必等企业 CTO / CIO，主导产品与信息化体系建设"],["创业当下","联合创立 Tauwork 韬工智能，打造 Agent 集成工厂"]],"services":[["AI 战略课程与企业工作坊","高管战略增长课 · 组织进化课 · 骨干 Agent 实战课（半天至两天）"],["AI FDE 陪跑营","12 周制企业 AI 骨干陪跑：业务翻译 → 技术编排 → 落地工程 → 结果治理"],["企业 AI 转型方案规划","路线图与系统选型：MES / ERP / PLM 复用存量、少定制"],["战略执行数字化系统","自研 ABOS：战略地图 · BSC 计分卡 · 风控推演"]],"collabs":[["企业 AI 落地陪跑机会","愿意做第一批共创企业，用真实场景打磨方法论"],["课程与培训合作渠道","培训机构、商会、产业园区联合开课与获客分成"],["咨询 Agent 开发伙伴","与咨询伙伴共同打造 Agent"]],"cases":[{"industry":"离散制造 · AI 转型规划","title":"精密传感器制造企业的数字化与 AI 路线抉择","portrait":"华南某精密传感器企业 · 约 200 人 · 年产值 8000 万+ · IATF16949 · 多品种小批量","budget":"100–200 万区间分期（非承诺值）","duration":"数周","points":["先盘存量再谈方案：ERP 在用、PLM 试跑暂停，把「不推倒重来」定成前提","两条路线摆桌面：复用存量 ERP + 独立 MES 集成 vs 一体化平台","分期规划标出 POC 验证项与行业参考 ROI 区间"],"delivery":"两版董事会级方案汇报 + 选型决策清单，客户确认推进方向","pitfall":"客户对动 ERP 极度敏感；ROI 只能给区间并标明非承诺值"},{"industry":"企业服务 · 战略执行","title":"ABOS 战略执行系统：把战略地图变成可计算的系统","portrait":"战略与绩效两张皮、复盘靠拍脑袋的中小企业与服务平台","budget":"自研产品","duration":"持续迭代","points":["三层结构：战略地图 + BSC 计分卡 + 风控推演","KPI 指标管道：两种打分口径、期间锁定与证据链"],"delivery":"已发布 v0.1.0，55 项自动化测试通过","pitfall":"战略类产品最难的是让老板真的每周用一次"}]},{"name":"周衡","slug":"zhouheng","city":"苏州","likes":5,"role":"制造现场 AI 交付工程师","industries":["离散制造"],"domains":["质检闭环","车间报工"],"roles":[["FDELab 示例","交付工程师","把车间问题翻译成可运行的 Agent 流程"]],"experiences":[["现场实施","在多品种小批量车间做过报工、质检和异常闭环的试点"]],"services":[["车间 Agent 试点","两周内选定一个班组场景，跑通采集、判断和回写"]],"collabs":[["寻找试点车间","希望和愿意开放一个班组数据的工厂一起做第一版"]],"cases":[{"industry":"离散制造 · 质检","title":"注塑车间的首件确认数字化","portrait":"华东某 80 人注塑厂 · 首件确认靠纸质记录","budget":"未披露","duration":"两周试点","points":["把首件照片和工艺参数收成一张卡","异常项直接推给班组长"],"delivery":"试点班组两周内停用纸质首件单","pitfall":"老师傅不填系统，靠班组长代录过渡两周才转正"}]},{"name":"徐永强","slug":"xuyongqiang","city":"深圳","likes":0,"role":"资深 IT 从业人士","industries":["企业服务"],"domains":["IT 架构"],"roles":[["待补充","—","档案整理中"]],"experiences":[],"services":[],"collabs":[],"cases":[]},{"name":"王承","slug":"fde1000","city":"上海","likes":12,"role":"信息化选型顾问（测试数据）","industries":["离散制造"],"domains":["ERP / MES 选型"],"roles":[["独立顾问","负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 19 个项目的落地"]],"services":[["制造业系统架构顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[]},{"name":"金承佑","slug":"fde1001","city":"厦门","likes":25,"role":"制造业数据治理顾问（测试数据）","industries":["离散制造"],"domains":["数据治理"],"roles":[["独立顾问","交付负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 15 个项目的落地"]],"services":[["制造业数据治理顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"企业服务 · 指标体系","title":"把报表从 40 张砍到 9 张","portrait":"某服务平台 · 管理层每周看 40 张报表","budget":"10–20 万","duration":"6 周","points":["先统一口径再建仓","一个指标只留一个负责人"],"delivery":"会议时长减半，指标口径唯一","pitfall":"指标定义吵了两周，比写 SQL 难得多"}]},{"name":"邹海群","slug":"fde1002","city":"武汉","likes":3,"role":"客服 AI 落地顾问（测试数据）","industries":["企业服务"],"domains":["知识库问答"],"roles":[["自营工作室","负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 32 个项目的落地"]],"services":[["企业知识库方案顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"医疗健康 · 院内知识","title":"院内制度问答的落地","portrait":"某民营医院 · 800 张床位","budget":"20–30 万","duration":"4 个月","points":["按角色做权限分级","制度更新要有版本号"],"delivery":"制度查询从找人问变成自助，日均 200 次","pitfall":"权限没做细，出现过越权可见，紧急加了分级"}]},{"name":"苗文","slug":"fde1003","city":"合肥","likes":26,"role":"工业视觉质检工程师（测试数据）","industries":["离散制造","医疗健康"],"domains":["质检闭环","选品与快反"],"roles":[["某服务商","顾问","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 3 个项目的落地"]],"services":[["工业视觉质检工程师","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"离散制造 · 外观质检","title":"注塑车间的首件确认数字化","portrait":"华东某 80 人注塑厂 · 首件确认靠纸质记录","budget":"8–15 万","duration":"两周试点","points":["首件照片与工艺参数收成一张卡","异常项直接推给班组长"],"delivery":"试点班组两周内停用纸质首件单","pitfall":"老师傅不填系统，靠班组长代录过渡两周"},{"industry":"消费品零售 · 品类规划","title":"家居品类的跨境选品改造","portrait":"深圳某家居跨境卖家 · 年 GMV 6000 万","budget":"15–25 万","duration":"2 个月","points":["先筛供应链可控的品类","预测只做排序不做定量"],"delivery":"动销率提升 22%，库存周转加快 9 天","pitfall":"供应链跟不上预测，爆了也追不出来"}]},{"name":"袁佳峰","slug":"fde1004","city":"南京","likes":19,"role":"制造现场 AI 交付工程师（测试数据）","industries":["离散制造"],"domains":["质检闭环"],"roles":[["某服务商","顾问","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 9 个项目的落地"]],"services":[["制造现场 AI 交付工程师","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"离散制造 · 外观质检","title":"注塑车间的首件确认数字化","portrait":"华东某 80 人注塑厂 · 首件确认靠纸质记录","budget":"8–15 万","duration":"两周试点","points":["首件照片与工艺参数收成一张卡","异常项直接推给班组长"],"delivery":"试点班组两周内停用纸质首件单","pitfall":"老师傅不填系统，靠班组长代录过渡两周"}]},{"name":"郎泽涛","slug":"fde1005","city":"上海","likes":16,"role":"信息化选型顾问（测试数据）","industries":["离散制造"],"domains":["ERP / MES 选型"],"roles":[["自营工作室","负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 13 个项目的落地"]],"services":[["制造业系统架构顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[]},{"name":"曹梦","slug":"fde1006","city":"成都","likes":5,"role":"跨境电商选品顾问（测试数据）","industries":["跨境电商"],"domains":["选品与快反"],"roles":[["独立顾问","交付负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 29 个项目的落地"]],"services":[["柔性供应链顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"消费品零售 · 品类规划","title":"家居品类的跨境选品改造","portrait":"深圳某家居跨境卖家 · 年 GMV 6000 万","budget":"15–25 万","duration":"2 个月","points":["先筛供应链可控的品类","预测只做排序不做定量"],"delivery":"动销率提升 22%，库存周转加快 9 天","pitfall":"供应链跟不上预测，爆了也追不出来"},{"industry":"消费品零售 · 品类规划","title":"家居品类的跨境选品改造","portrait":"深圳某家居跨境卖家 · 年 GMV 6000 万","budget":"15–25 万","duration":"2 个月","points":["先筛供应链可控的品类","预测只做排序不做定量"],"delivery":"动销率提升 22%，库存周转加快 9 天","pitfall":"供应链跟不上预测，爆了也追不出来"}]},{"name":"罗佳","slug":"fde1007","city":"东莞","likes":12,"role":"制造业数据治理顾问（测试数据）","industries":["离散制造"],"domains":["数据治理","战略落地"],"roles":[["独立顾问","顾问","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 29 个项目的落地"]],"services":[["BI 与指标体系顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[]},{"name":"马言","slug":"fde1008","city":"南京","likes":22,"role":"信息化选型顾问（测试数据）","industries":["离散制造","消费品零售"],"domains":["ERP / MES 选型"],"roles":[["独立顾问","顾问","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 36 个项目的落地"]],"services":[["信息化选型顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"离散制造 · 系统选型","title":"汽配厂的 ERP 换与不换","portrait":"华东某汽配厂 · 年产值 3 亿 · 两班倒","budget":"选型咨询 15–25 万","duration":"3 周","points":["按真实单据流做场景打分","把二次开发量折成钱算总成本"],"delivery":"一份可执行的选型矩阵 + 报价对比","pitfall":"供应商演示都完美，一进车间就露馅"}]},{"name":"郎知","slug":"fde1009","city":"武汉","likes":6,"role":"企业 AI 转型顾问（测试数据）","industries":["离散制造","企业服务"],"domains":["AI 转型规划"],"roles":[["自营工作室","交付负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 13 个项目的落地"]],"services":[["数智化转型讲师 · 独立顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"企业服务 · 战略规划","title":"民营集团 AI 三年路线图","portrait":"某民营集团 · 6 家子公司 · 年营收 20 亿","budget":"咨询费 30–50 万","duration":"6 周","points":["先做 AI 成熟度体检","按子公司分开算投入产出"],"delivery":"三年路线图与年度投资节奏表","pitfall":"高管共识比方案本身难，第二轮才对齐"},{"industry":"离散制造 · AI 转型规划","title":"多品种小批量工厂的 AI 路线抉择","portrait":"华南某精密结构件厂 · 约 260 人 · 年产值 1.2 亿","budget":"120–200 万区间分期（非承诺值）","duration":"数周","points":["先盘存量再谈方案，不推倒重来","两条路线摆桌面，用愿不愿动 ERP 做分水岭"],"delivery":"两版董事会级方案 + 选型决策清单","pitfall":"客户对动 ERP 极度敏感，ROI 只能给区间"}]},{"name":"马景","slug":"fde1010","city":"苏州","likes":3,"role":"BSC 与绩效体系顾问（测试数据）","industries":["企业服务","公用事业"],"domains":["战略落地"],"roles":[["某服务商","顾问","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 36 个项目的落地"]],"services":[["组织效能顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[]},{"name":"王建","slug":"fde1011","city":"合肥","likes":12,"role":"企业 AI 转型顾问（测试数据）","industries":["离散制造"],"domains":["AI 转型规划"],"roles":[["自营工作室","负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 5 个项目的落地"]],"services":[["企业 AI 转型顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"企业服务 · 战略规划","title":"民营集团 AI 三年路线图","portrait":"某民营集团 · 6 家子公司 · 年营收 20 亿","budget":"咨询费 30–50 万","duration":"6 周","points":["先做 AI 成熟度体检","按子公司分开算投入产出"],"delivery":"三年路线图与年度投资节奏表","pitfall":"高管共识比方案本身难，第二轮才对齐"}]},{"name":"赵立","slug":"fde1012","city":"济南","likes":14,"role":"工业视觉质检工程师（测试数据）","industries":["离散制造"],"domains":["质检闭环"],"roles":[["某服务商","负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 12 个项目的落地"]],"services":[["制造现场 AI 交付工程师","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"离散制造 · 外观质检","title":"注塑车间的首件确认数字化","portrait":"华东某 80 人注塑厂 · 首件确认靠纸质记录","budget":"8–15 万","duration":"两周试点","points":["首件照片与工艺参数收成一张卡","异常项直接推给班组长"],"delivery":"试点班组两周内停用纸质首件单","pitfall":"老师傅不填系统，靠班组长代录过渡两周"},{"industry":"离散制造 · 外观质检","title":"注塑车间的首件确认数字化","portrait":"华东某 80 人注塑厂 · 首件确认靠纸质记录","budget":"8–15 万","duration":"两周试点","points":["首件照片与工艺参数收成一张卡","异常项直接推给班组长"],"delivery":"试点班组两周内停用纸质首件单","pitfall":"老师傅不填系统，靠班组长代录过渡两周"}]},{"name":"杨晓琴","slug":"fde1013","city":"武汉","likes":14,"role":"客服 AI 落地顾问（测试数据）","industries":["企业服务"],"domains":["知识库问答"],"roles":[["某服务商","负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 34 个项目的落地"]],"services":[["客服 AI 落地顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"企业服务 · 内部知识","title":"售后知识库的问答机器人","portrait":"某设备厂商 · 售后团队 60 人 · 文档 3000 份","budget":"15–25 万","duration":"3 个月","points":["先做文档清洗再做检索","答案必须带出处"],"delivery":"一次解决率从 61% 提升到 84%","pitfall":"文档质量太差，检索准但答非所问"}]},{"name":"秦慕","slug":"fde1014","city":"宁波","likes":17,"role":"AI 战略落地顾问（测试数据）","industries":["离散制造"],"domains":["AI 转型规划"],"roles":[["某服务商","顾问","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 31 个项目的落地"]],"services":[["企业 AI 转型顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"离散制造 · AI 转型规划","title":"多品种小批量工厂的 AI 路线抉择","portrait":"华南某精密结构件厂 · 约 260 人 · 年产值 1.2 亿","budget":"120–200 万区间分期（非承诺值）","duration":"数周","points":["先盘存量再谈方案，不推倒重来","两条路线摆桌面，用愿不愿动 ERP 做分水岭"],"delivery":"两版董事会级方案 + 选型决策清单","pitfall":"客户对动 ERP 极度敏感，ROI 只能给区间"}]},{"name":"魏泽","slug":"fde1015","city":"上海","likes":6,"role":"跨境电商选品顾问（测试数据）","industries":["跨境电商","消费品零售"],"domains":["选品与快反"],"roles":[["自营工作室","顾问","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 31 个项目的落地"]],"services":[["跨境电商选品顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"消费品零售 · 品类规划","title":"家居品类的跨境选品改造","portrait":"深圳某家居跨境卖家 · 年 GMV 6000 万","budget":"15–25 万","duration":"2 个月","points":["先筛供应链可控的品类","预测只做排序不做定量"],"delivery":"动销率提升 22%，库存周转加快 9 天","pitfall":"供应链跟不上预测，爆了也追不出来"},{"industry":"跨境电商 · 选品","title":"女装卖家的 AI 选款与追单节奏","portrait":"杭州某女装跨境卖家 · 日均上新 30 款","budget":"按 GMV 分成","duration":"3 个月","points":["用浏览与加购行为预测爆款","100–200 件试产，达标当日追单"],"delivery":"滞销率从 28% 降到 11%","pitfall":"款式预测依赖上新量，款太少的店铺跑不出效果"}]},{"name":"方佳怡","slug":"fde1016","city":"泉州","likes":26,"role":"客服 AI 落地顾问（测试数据）","industries":["企业服务"],"domains":["知识库问答","AI 转型规划"],"roles":[["某服务商","顾问","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 39 个项目的落地"]],"services":[["客服 AI 落地顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"医疗健康 · 院内知识","title":"院内制度问答的落地","portrait":"某民营医院 · 800 张床位","budget":"20–30 万","duration":"4 个月","points":["按角色做权限分级","制度更新要有版本号"],"delivery":"制度查询从找人问变成自助，日均 200 次","pitfall":"权限没做细，出现过越权可见，紧急加了分级"}]},{"name":"彭嘉琳","slug":"fde1017","city":"济南","likes":13,"role":"工业视觉质检工程师（测试数据）","industries":["离散制造"],"domains":["质检闭环"],"roles":[["自营工作室","交付负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 26 个项目的落地"]],"services":[["工业视觉质检工程师","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"离散制造 · 外观质检","title":"注塑车间的首件确认数字化","portrait":"华东某 80 人注塑厂 · 首件确认靠纸质记录","budget":"8–15 万","duration":"两周试点","points":["首件照片与工艺参数收成一张卡","异常项直接推给班组长"],"delivery":"试点班组两周内停用纸质首件单","pitfall":"老师傅不填系统，靠班组长代录过渡两周"},{"industry":"离散制造 · 视觉质检","title":"五金件表面缺陷的轻量视觉方案","portrait":"华南某五金厂 · 6 条产线 · 人工全检","budget":"25–40 万","duration":"3 个月","points":["先固定光照与工位","小样本先跑通再扩产线"],"delivery":"漏检率从 4% 降到 0.8%，复检人力减半","pitfall":"光照一变模型就漂，最后靠固定工位治具解决"}]},{"name":"柳卓强","slug":"fde1018","city":"厦门","likes":21,"role":"车间异常闭环顾问（测试数据）","industries":["离散制造"],"domains":["质检闭环"],"roles":[["独立顾问","顾问","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 15 个项目的落地"]],"services":[["车间异常闭环顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[]},{"name":"杨泽杰","slug":"fde1019","city":"济南","likes":6,"role":"客服 AI 落地顾问（测试数据）","industries":["企业服务","医疗健康"],"domains":["知识库问答"],"roles":[["独立顾问","负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 29 个项目的落地"]],"services":[["客服 AI 落地顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"企业服务 · 内部知识","title":"售后知识库的问答机器人","portrait":"某设备厂商 · 售后团队 60 人 · 文档 3000 份","budget":"15–25 万","duration":"3 个月","points":["先做文档清洗再做检索","答案必须带出处"],"delivery":"一次解决率从 61% 提升到 84%","pitfall":"文档质量太差，检索准但答非所问"}]},{"name":"卫晓瑶","slug":"fde1020","city":"东莞","likes":9,"role":"企业知识库方案顾问（测试数据）","industries":["企业服务","医疗健康"],"domains":["知识库问答"],"roles":[["自营工作室","顾问","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 10 个项目的落地"]],"services":[["内部知识助手顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"医疗健康 · 院内知识","title":"院内制度问答的落地","portrait":"某民营医院 · 800 张床位","budget":"20–30 万","duration":"4 个月","points":["按角色做权限分级","制度更新要有版本号"],"delivery":"制度查询从找人问变成自助，日均 200 次","pitfall":"权限没做细，出现过越权可见，紧急加了分级"}]},{"name":"范泽语","slug":"fde1021","city":"上海","likes":0,"role":"AI 内容营销顾问（测试数据）","industries":["跨境电商"],"domains":["营销内容生成"],"roles":[["自营工作室","顾问","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 4 个项目的落地"]],"services":[["品牌内容运营顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"跨境电商 · 内容生产","title":"多语言详情页的批量生成","portrait":"广州某跨境卖家 · 6 个站点 · SKU 4000+","budget":"8–15 万","duration":"6 周","points":["先做术语库再做生成","关键类目保留人工终审"],"delivery":"详情页产出从 3 天/款到 2 小时/款","pitfall":"机翻痕迹被平台判低质，加了人工校对层才过"}]},{"name":"许若怡","slug":"fde1022","city":"苏州","likes":19,"role":"战略执行顾问（测试数据）","industries":["企业服务"],"domains":["战略落地"],"roles":[["独立顾问","交付负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 11 个项目的落地"]],"services":[["组织效能顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"公用事业 · 绩效体系","title":"从 KPI 考核到 OKR 的过渡","portrait":"某市政服务公司 · 1400 人","budget":"20–35 万","duration":"5 个月","points":["先培训再上线系统","关键结果必须可复盘"],"delivery":"部门目标对齐率从 45% 提升到 82%","pitfall":"中层把 OKR 当 KPI 填，前两个月全是数字指标"},{"industry":"企业服务 · 战略执行","title":"战略地图变成可计算的系统","portrait":"战略与绩效两张皮的中小企业","budget":"自研产品","duration":"持续迭代","points":["三层结构：战略地图 + 计分卡 + 风控推演","KPI 管道带证据链"],"delivery":"已发布 v0.1.0，55 项自动化测试通过","pitfall":"战略类产品最难的是让老板每周真的用一次"}]},{"name":"袁慧","slug":"fde1023","city":"无锡","likes":16,"role":"跨境投放顾问（测试数据）","industries":["跨境电商","消费品零售"],"domains":["营销内容生成"],"roles":[["自营工作室","顾问","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 22 个项目的落地"]],"services":[["AI 内容营销顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"教育培训 · 内容运营","title":"课程物料的 AI 生产线","portrait":"某职业教育机构 · 年招生 2 万人","budget":"10–18 万","duration":"2 个月","points":["先定品牌语气规范","模板化生成 + 人工抽检"],"delivery":"物料制作成本降 60%，发布节奏从月到周","pitfall":"风格不统一，第一批物料被市场部全部退回"}]},{"name":"褚一","slug":"fde1024","city":"泉州","likes":21,"role":"制造业系统架构顾问（测试数据）","industries":["离散制造","消费品零售"],"domains":["ERP / MES 选型"],"roles":[["某服务商","交付负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 23 个项目的落地"]],"services":[["制造业系统架构顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"消费品零售 · 系统选型","title":"连锁零售的中台选型","portrait":"某区域连锁 · 120 家门店","budget":"20–30 万","duration":"4 周","points":["先跑断网与弱网场景","把老系统数据清洗成本单列"],"delivery":"选型结论 + 迁移风险清单","pitfall":"门店断网场景没人测，上线首周出过两次事故"}]},{"name":"王雅","slug":"fde1025","city":"南京","likes":19,"role":"柔性供应链顾问（测试数据）","industries":["跨境电商"],"domains":["选品与快反","ERP / MES 实施"],"roles":[["自营工作室","交付负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 15 个项目的落地"]],"services":[["小单快反操盘手","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"跨境电商 · 选品","title":"女装卖家的 AI 选款与追单节奏","portrait":"杭州某女装跨境卖家 · 日均上新 30 款","budget":"按 GMV 分成","duration":"3 个月","points":["用浏览与加购行为预测爆款","100–200 件试产，达标当日追单"],"delivery":"滞销率从 28% 降到 11%","pitfall":"款式预测依赖上新量，款太少的店铺跑不出效果"}]},{"name":"许初然","slug":"fde1026","city":"常州","likes":24,"role":"企业 AI 转型顾问（测试数据）","industries":["离散制造"],"domains":["AI 转型规划"],"roles":[["独立顾问","顾问","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 21 个项目的落地"]],"services":[["AI 战略落地顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"离散制造 · AI 转型规划","title":"多品种小批量工厂的 AI 路线抉择","portrait":"华南某精密结构件厂 · 约 260 人 · 年产值 1.2 亿","budget":"120–200 万区间分期（非承诺值）","duration":"数周","points":["先盘存量再谈方案，不推倒重来","两条路线摆桌面，用愿不愿动 ERP 做分水岭"],"delivery":"两版董事会级方案 + 选型决策清单","pitfall":"客户对动 ERP 极度敏感，ROI 只能给区间"}]},{"name":"方立","slug":"fde1027","city":"泉州","likes":24,"role":"战略执行顾问（测试数据）","industries":["企业服务","公用事业"],"domains":["战略落地"],"roles":[["某服务商","交付负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 26 个项目的落地"]],"services":[["BSC 与绩效体系顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"公用事业 · 绩效体系","title":"从 KPI 考核到 OKR 的过渡","portrait":"某市政服务公司 · 1400 人","budget":"20–35 万","duration":"5 个月","points":["先培训再上线系统","关键结果必须可复盘"],"delivery":"部门目标对齐率从 45% 提升到 82%","pitfall":"中层把 OKR 当 KPI 填，前两个月全是数字指标"},{"industry":"企业服务 · 战略执行","title":"战略地图变成可计算的系统","portrait":"战略与绩效两张皮的中小企业","budget":"自研产品","duration":"持续迭代","points":["三层结构：战略地图 + 计分卡 + 风控推演","KPI 管道带证据链"],"delivery":"已发布 v0.1.0，55 项自动化测试通过","pitfall":"战略类产品最难的是让老板每周真的用一次"},{"industry":"企业服务 · 战略执行","title":"战略地图变成可计算的系统","portrait":"战略与绩效两张皮的中小企业","budget":"自研产品","duration":"持续迭代","points":["三层结构：战略地图 + 计分卡 + 风控推演","KPI 管道带证据链"],"delivery":"已发布 v0.1.0，55 项自动化测试通过","pitfall":"战略类产品最难的是让老板每周真的用一次"}]},{"name":"张泽","slug":"fde1028","city":"宁波","likes":26,"role":"信息化选型顾问（测试数据）","industries":["离散制造"],"domains":["ERP / MES 选型"],"roles":[["某服务商","顾问","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 17 个项目的落地"]],"services":[["制造业系统架构顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"离散制造 · 系统选型","title":"汽配厂的 ERP 换与不换","portrait":"华东某汽配厂 · 年产值 3 亿 · 两班倒","budget":"选型咨询 15–25 万","duration":"3 周","points":["按真实单据流做场景打分","把二次开发量折成钱算总成本"],"delivery":"一份可执行的选型矩阵 + 报价对比","pitfall":"供应商演示都完美，一进车间就露馅"},{"industry":"离散制造 · 系统选型","title":"汽配厂的 ERP 换与不换","portrait":"华东某汽配厂 · 年产值 3 亿 · 两班倒","budget":"选型咨询 15–25 万","duration":"3 周","points":["按真实单据流做场景打分","把二次开发量折成钱算总成本"],"delivery":"一份可执行的选型矩阵 + 报价对比","pitfall":"供应商演示都完美，一进车间就露馅"}]},{"name":"林景","slug":"fde1029","city":"无锡","likes":12,"role":"品牌内容运营顾问（测试数据）","industries":["跨境电商"],"domains":["营销内容生成"],"roles":[["独立顾问","交付负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 18 个项目的落地"]],"services":[["跨境投放顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"跨境电商 · 内容生产","title":"多语言详情页的批量生成","portrait":"广州某跨境卖家 · 6 个站点 · SKU 4000+","budget":"8–15 万","duration":"6 周","points":["先做术语库再做生成","关键类目保留人工终审"],"delivery":"详情页产出从 3 天/款到 2 小时/款","pitfall":"机翻痕迹被平台判低质，加了人工校对层才过"}]},{"name":"赵海","slug":"fde1030","city":"深圳","likes":24,"role":"MES 交付负责人（测试数据）","industries":["离散制造"],"domains":["ERP / MES 实施"],"roles":[["某服务商","交付负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 14 个项目的落地"]],"services":[["MES 交付负责人","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"离散制造 · 系统实施","title":"汽配厂 MES 上线：先补数据再谈智能","portrait":"宁波某汽配厂 · 年产值 3 亿 · 两班倒","budget":"约 60 万","duration":"4 个月","points":["先打通工单与报工","再上异常闭环与看板"],"delivery":"报工及时率从 60% 提升到 92%","pitfall":"跳过数据治理直接上 MES，返工率极高"}]},{"name":"杨静","slug":"fde1031","city":"宁波","likes":5,"role":"柔性供应链顾问（测试数据）","industries":["跨境电商"],"domains":["选品与快反","数据治理"],"roles":[["某服务商","负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 21 个项目的落地"]],"services":[["柔性供应链顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"消费品零售 · 品类规划","title":"家居品类的跨境选品改造","portrait":"深圳某家居跨境卖家 · 年 GMV 6000 万","budget":"15–25 万","duration":"2 个月","points":["先筛供应链可控的品类","预测只做排序不做定量"],"delivery":"动销率提升 22%，库存周转加快 9 天","pitfall":"供应链跟不上预测，爆了也追不出来"}]},{"name":"孔志远","slug":"fde1032","city":"济南","likes":22,"role":"制造业数据治理顾问（测试数据）","industries":["离散制造"],"domains":["数据治理"],"roles":[["独立顾问","交付负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 21 个项目的落地"]],"services":[["BI 与指标体系顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"企业服务 · 指标体系","title":"把报表从 40 张砍到 9 张","portrait":"某服务平台 · 管理层每周看 40 张报表","budget":"10–20 万","duration":"6 周","points":["先统一口径再建仓","一个指标只留一个负责人"],"delivery":"会议时长减半，指标口径唯一","pitfall":"指标定义吵了两周，比写 SQL 难得多"},{"industry":"离散制造 · 主数据","title":"物料主数据治理：从 8 万条到 2 万条","portrait":"华东某装备厂 · 物料编码混乱 · 三套系统","budget":"30–50 万","duration":"4 个月","points":["先定编码规则再谈清洗","治理结果要挂到考核上"],"delivery":"一物多码从 37% 降到 4%","pitfall":"各部门都认自己的编码，最后靠奖金挂钩才推下去"}]},{"name":"孙明","slug":"fde1033","city":"上海","likes":25,"role":"ERP / MES 选型顾问（测试数据）","industries":["离散制造"],"domains":["ERP / MES 选型"],"roles":[["某服务商","顾问","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 18 个项目的落地"]],"services":[["ERP / MES 选型顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[]},{"name":"郑展","slug":"fde1034","city":"宁波","likes":22,"role":"AI 内容营销顾问（测试数据）","industries":["跨境电商"],"domains":["营销内容生成","知识库问答"],"roles":[["独立顾问","顾问","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 8 个项目的落地"]],"services":[["品牌内容运营顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"教育培训 · 内容运营","title":"课程物料的 AI 生产线","portrait":"某职业教育机构 · 年招生 2 万人","budget":"10–18 万","duration":"2 个月","points":["先定品牌语气规范","模板化生成 + 人工抽检"],"delivery":"物料制作成本降 60%，发布节奏从月到周","pitfall":"风格不统一，第一批物料被市场部全部退回"}]},{"name":"金天","slug":"fde1035","city":"青岛","likes":24,"role":"制造业系统架构顾问（测试数据）","industries":["离散制造"],"domains":["ERP / MES 选型"],"roles":[["自营工作室","顾问","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 15 个项目的落地"]],"services":[["信息化选型顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"离散制造 · 系统选型","title":"汽配厂的 ERP 换与不换","portrait":"华东某汽配厂 · 年产值 3 亿 · 两班倒","budget":"选型咨询 15–25 万","duration":"3 周","points":["按真实单据流做场景打分","把二次开发量折成钱算总成本"],"delivery":"一份可执行的选型矩阵 + 报价对比","pitfall":"供应商演示都完美，一进车间就露馅"}]},{"name":"马展琪","slug":"fde1036","city":"泉州","likes":19,"role":"ERP / MES 选型顾问（测试数据）","industries":["离散制造","消费品零售"],"domains":["ERP / MES 选型"],"roles":[["自营工作室","顾问","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 7 个项目的落地"]],"services":[["信息化选型顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"消费品零售 · 系统选型","title":"连锁零售的中台选型","portrait":"某区域连锁 · 120 家门店","budget":"20–30 万","duration":"4 周","points":["先跑断网与弱网场景","把老系统数据清洗成本单列"],"delivery":"选型结论 + 迁移风险清单","pitfall":"门店断网场景没人测，上线首周出过两次事故"}]},{"name":"俞承琳","slug":"fde1037","city":"东莞","likes":1,"role":"制造业系统架构顾问（测试数据）","industries":["离散制造"],"domains":["ERP / MES 选型"],"roles":[["某服务商","顾问","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 17 个项目的落地"]],"services":[["信息化选型顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"消费品零售 · 系统选型","title":"连锁零售的中台选型","portrait":"某区域连锁 · 120 家门店","budget":"20–30 万","duration":"4 周","points":["先跑断网与弱网场景","把老系统数据清洗成本单列"],"delivery":"选型结论 + 迁移风险清单","pitfall":"门店断网场景没人测，上线首周出过两次事故"}]},{"name":"窦慕","slug":"fde1038","city":"深圳","likes":21,"role":"MES 交付负责人（测试数据）","industries":["离散制造"],"domains":["ERP / MES 实施"],"roles":[["自营工作室","交付负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 29 个项目的落地"]],"services":[["ERP / MES 实施总监","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[]},{"name":"秦卓","slug":"fde1039","city":"济南","likes":4,"role":"主数据与报表体系顾问（测试数据）","industries":["离散制造"],"domains":["数据治理"],"roles":[["自营工作室","负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 3 个项目的落地"]],"services":[["BI 与指标体系顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"企业服务 · 指标体系","title":"把报表从 40 张砍到 9 张","portrait":"某服务平台 · 管理层每周看 40 张报表","budget":"10–20 万","duration":"6 周","points":["先统一口径再建仓","一个指标只留一个负责人"],"delivery":"会议时长减半，指标口径唯一","pitfall":"指标定义吵了两周，比写 SQL 难得多"},{"industry":"企业服务 · 指标体系","title":"把报表从 40 张砍到 9 张","portrait":"某服务平台 · 管理层每周看 40 张报表","budget":"10–20 万","duration":"6 周","points":["先统一口径再建仓","一个指标只留一个负责人"],"delivery":"会议时长减半，指标口径唯一","pitfall":"指标定义吵了两周，比写 SQL 难得多"}]},{"name":"韩承","slug":"fde1040","city":"厦门","likes":17,"role":"企业知识库方案顾问（测试数据）","industries":["企业服务","医疗健康"],"domains":["知识库问答"],"roles":[["独立顾问","负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 36 个项目的落地"]],"services":[["内部知识助手顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"企业服务 · 内部知识","title":"售后知识库的问答机器人","portrait":"某设备厂商 · 售后团队 60 人 · 文档 3000 份","budget":"15–25 万","duration":"3 个月","points":["先做文档清洗再做检索","答案必须带出处"],"delivery":"一次解决率从 61% 提升到 84%","pitfall":"文档质量太差，检索准但答非所问"}]},{"name":"谢佩之","slug":"fde1041","city":"深圳","likes":15,"role":"ERP / MES 选型顾问（测试数据）","industries":["离散制造"],"domains":["ERP / MES 选型"],"roles":[["独立顾问","负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 8 个项目的落地"]],"services":[["信息化选型顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"消费品零售 · 系统选型","title":"连锁零售的中台选型","portrait":"某区域连锁 · 120 家门店","budget":"20–30 万","duration":"4 周","points":["先跑断网与弱网场景","把老系统数据清洗成本单列"],"delivery":"选型结论 + 迁移风险清单","pitfall":"门店断网场景没人测，上线首周出过两次事故"}]},{"name":"戚晓国","slug":"fde1042","city":"合肥","likes":19,"role":"跨境投放顾问（测试数据）","industries":["跨境电商","消费品零售"],"domains":["营销内容生成"],"roles":[["某服务商","负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 28 个项目的落地"]],"services":[["跨境投放顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[]},{"name":"金清琪","slug":"fde1043","city":"宁波","likes":15,"role":"MES 交付负责人（测试数据）","industries":["离散制造","医疗健康"],"domains":["ERP / MES 实施","AI 转型规划"],"roles":[["自营工作室","负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 37 个项目的落地"]],"services":[["ERP / MES 实施总监","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"离散制造 · 系统实施","title":"汽配厂 MES 上线：先补数据再谈智能","portrait":"宁波某汽配厂 · 年产值 3 亿 · 两班倒","budget":"约 60 万","duration":"4 个月","points":["先打通工单与报工","再上异常闭环与看板"],"delivery":"报工及时率从 60% 提升到 92%","pitfall":"跳过数据治理直接上 MES，返工率极高"}]},{"name":"喻言","slug":"fde1044","city":"东莞","likes":21,"role":"品牌内容运营顾问（测试数据）","industries":["跨境电商","消费品零售"],"domains":["营销内容生成"],"roles":[["独立顾问","顾问","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 10 个项目的落地"]],"services":[["跨境投放顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"跨境电商 · 内容生产","title":"多语言详情页的批量生成","portrait":"广州某跨境卖家 · 6 个站点 · SKU 4000+","budget":"8–15 万","duration":"6 周","points":["先做术语库再做生成","关键类目保留人工终审"],"delivery":"详情页产出从 3 天/款到 2 小时/款","pitfall":"机翻痕迹被平台判低质，加了人工校对层才过"}]},{"name":"陶靖","slug":"fde1045","city":"成都","likes":21,"role":"MES 交付负责人（测试数据）","industries":["离散制造","医疗健康"],"domains":["ERP / MES 实施"],"roles":[["某服务商","交付负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 8 个项目的落地"]],"services":[["MES 交付负责人","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"离散制造 · 系统实施","title":"汽配厂 MES 上线：先补数据再谈智能","portrait":"宁波某汽配厂 · 年产值 3 亿 · 两班倒","budget":"约 60 万","duration":"4 个月","points":["先打通工单与报工","再上异常闭环与看板"],"delivery":"报工及时率从 60% 提升到 92%","pitfall":"跳过数据治理直接上 MES，返工率极高"}]},{"name":"王书峰","slug":"fde1046","city":"南京","likes":7,"role":"BI 与指标体系顾问（测试数据）","industries":["离散制造","企业服务"],"domains":["数据治理"],"roles":[["某服务商","交付负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 31 个项目的落地"]],"services":[["制造业数据治理顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"离散制造 · 主数据","title":"物料主数据治理：从 8 万条到 2 万条","portrait":"华东某装备厂 · 物料编码混乱 · 三套系统","budget":"30–50 万","duration":"4 个月","points":["先定编码规则再谈清洗","治理结果要挂到考核上"],"delivery":"一物多码从 37% 降到 4%","pitfall":"各部门都认自己的编码，最后靠奖金挂钩才推下去"}]},{"name":"柳初涛","slug":"fde1047","city":"佛山","likes":19,"role":"ERP / MES 选型顾问（测试数据）","industries":["离散制造"],"domains":["ERP / MES 选型"],"roles":[["独立顾问","顾问","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 25 个项目的落地"]],"services":[["制造业系统架构顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"消费品零售 · 系统选型","title":"连锁零售的中台选型","portrait":"某区域连锁 · 120 家门店","budget":"20–30 万","duration":"4 周","points":["先跑断网与弱网场景","把老系统数据清洗成本单列"],"delivery":"选型结论 + 迁移风险清单","pitfall":"门店断网场景没人测，上线首周出过两次事故"}]},{"name":"华佩","slug":"fde1048","city":"厦门","likes":22,"role":"制造业信息化实施顾问（测试数据）","industries":["离散制造"],"domains":["ERP / MES 实施","战略落地"],"roles":[["自营工作室","负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 14 个项目的落地"]],"services":[["制造业信息化实施顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[]},{"name":"郭嘉琴","slug":"fde1049","city":"长沙","likes":3,"role":"BSC 与绩效体系顾问（测试数据）","industries":["企业服务"],"domains":["战略落地"],"roles":[["自营工作室","交付负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 27 个项目的落地"]],"services":[["BSC 与绩效体系顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"公用事业 · 绩效体系","title":"从 KPI 考核到 OKR 的过渡","portrait":"某市政服务公司 · 1400 人","budget":"20–35 万","duration":"5 个月","points":["先培训再上线系统","关键结果必须可复盘"],"delivery":"部门目标对齐率从 45% 提升到 82%","pitfall":"中层把 OKR 当 KPI 填，前两个月全是数字指标"},{"industry":"公用事业 · 绩效体系","title":"从 KPI 考核到 OKR 的过渡","portrait":"某市政服务公司 · 1400 人","budget":"20–35 万","duration":"5 个月","points":["先培训再上线系统","关键结果必须可复盘"],"delivery":"部门目标对齐率从 45% 提升到 82%","pitfall":"中层把 OKR 当 KPI 填，前两个月全是数字指标"},{"industry":"企业服务 · 战略执行","title":"战略地图变成可计算的系统","portrait":"战略与绩效两张皮的中小企业","budget":"自研产品","duration":"持续迭代","points":["三层结构：战略地图 + 计分卡 + 风控推演","KPI 管道带证据链"],"delivery":"已发布 v0.1.0，55 项自动化测试通过","pitfall":"战略类产品最难的是让老板每周真的用一次"}]},{"name":"尤宁鸣","slug":"fde1050","city":"无锡","likes":11,"role":"组织效能顾问（测试数据）","industries":["企业服务"],"domains":["战略落地"],"roles":[["自营工作室","交付负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 22 个项目的落地"]],"services":[["战略执行顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"公用事业 · 绩效体系","title":"从 KPI 考核到 OKR 的过渡","portrait":"某市政服务公司 · 1400 人","budget":"20–35 万","duration":"5 个月","points":["先培训再上线系统","关键结果必须可复盘"],"delivery":"部门目标对齐率从 45% 提升到 82%","pitfall":"中层把 OKR 当 KPI 填，前两个月全是数字指标"},{"industry":"公用事业 · 绩效体系","title":"从 KPI 考核到 OKR 的过渡","portrait":"某市政服务公司 · 1400 人","budget":"20–35 万","duration":"5 个月","points":["先培训再上线系统","关键结果必须可复盘"],"delivery":"部门目标对齐率从 45% 提升到 82%","pitfall":"中层把 OKR 当 KPI 填，前两个月全是数字指标"}]},{"name":"何承","slug":"fde1051","city":"泉州","likes":20,"role":"跨境电商选品顾问（测试数据）","industries":["跨境电商","消费品零售"],"domains":["选品与快反"],"roles":[["独立顾问","顾问","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 25 个项目的落地"]],"services":[["柔性供应链顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"消费品零售 · 品类规划","title":"家居品类的跨境选品改造","portrait":"深圳某家居跨境卖家 · 年 GMV 6000 万","budget":"15–25 万","duration":"2 个月","points":["先筛供应链可控的品类","预测只做排序不做定量"],"delivery":"动销率提升 22%，库存周转加快 9 天","pitfall":"供应链跟不上预测，爆了也追不出来"},{"industry":"跨境电商 · 选品","title":"女装卖家的 AI 选款与追单节奏","portrait":"杭州某女装跨境卖家 · 日均上新 30 款","budget":"按 GMV 分成","duration":"3 个月","points":["用浏览与加购行为预测爆款","100–200 件试产，达标当日追单"],"delivery":"滞销率从 28% 降到 11%","pitfall":"款式预测依赖上新量，款太少的店铺跑不出效果"}]},{"name":"郑梦","slug":"fde1052","city":"苏州","likes":17,"role":"车间异常闭环顾问（测试数据）","industries":["离散制造"],"domains":["质检闭环"],"roles":[["自营工作室","交付负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 15 个项目的落地"]],"services":[["工业视觉质检工程师","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"离散制造 · 外观质检","title":"注塑车间的首件确认数字化","portrait":"华东某 80 人注塑厂 · 首件确认靠纸质记录","budget":"8–15 万","duration":"两周试点","points":["首件照片与工艺参数收成一张卡","异常项直接推给班组长"],"delivery":"试点班组两周内停用纸质首件单","pitfall":"老师傅不填系统，靠班组长代录过渡两周"},{"industry":"离散制造 · 视觉质检","title":"五金件表面缺陷的轻量视觉方案","portrait":"华南某五金厂 · 6 条产线 · 人工全检","budget":"25–40 万","duration":"3 个月","points":["先固定光照与工位","小样本先跑通再扩产线"],"delivery":"漏检率从 4% 降到 0.8%，复检人力减半","pitfall":"光照一变模型就漂，最后靠固定工位治具解决"},{"industry":"离散制造 · 视觉质检","title":"五金件表面缺陷的轻量视觉方案","portrait":"华南某五金厂 · 6 条产线 · 人工全检","budget":"25–40 万","duration":"3 个月","points":["先固定光照与工位","小样本先跑通再扩产线"],"delivery":"漏检率从 4% 降到 0.8%，复检人力减半","pitfall":"光照一变模型就漂，最后靠固定工位治具解决"}]},{"name":"孔静","slug":"fde1053","city":"常州","likes":14,"role":"品牌内容运营顾问（测试数据）","industries":["跨境电商","消费品零售"],"domains":["营销内容生成"],"roles":[["某服务商","交付负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 36 个项目的落地"]],"services":[["跨境投放顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"教育培训 · 内容运营","title":"课程物料的 AI 生产线","portrait":"某职业教育机构 · 年招生 2 万人","budget":"10–18 万","duration":"2 个月","points":["先定品牌语气规范","模板化生成 + 人工抽检"],"delivery":"物料制作成本降 60%，发布节奏从月到周","pitfall":"风格不统一，第一批物料被市场部全部退回"}]},{"name":"杨文","slug":"fde1054","city":"上海","likes":19,"role":"制造业系统架构顾问（测试数据）","industries":["离散制造","消费品零售"],"domains":["ERP / MES 选型","ERP / MES 实施"],"roles":[["自营工作室","负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 27 个项目的落地"]],"services":[["制造业系统架构顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"消费品零售 · 系统选型","title":"连锁零售的中台选型","portrait":"某区域连锁 · 120 家门店","budget":"20–30 万","duration":"4 周","points":["先跑断网与弱网场景","把老系统数据清洗成本单列"],"delivery":"选型结论 + 迁移风险清单","pitfall":"门店断网场景没人测，上线首周出过两次事故"}]},{"name":"韩志鸣","slug":"fde1055","city":"青岛","likes":24,"role":"品牌内容运营顾问（测试数据）","industries":["跨境电商","消费品零售"],"domains":["营销内容生成"],"roles":[["自营工作室","交付负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 3 个项目的落地"]],"services":[["AI 内容营销顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"教育培训 · 内容运营","title":"课程物料的 AI 生产线","portrait":"某职业教育机构 · 年招生 2 万人","budget":"10–18 万","duration":"2 个月","points":["先定品牌语气规范","模板化生成 + 人工抽检"],"delivery":"物料制作成本降 60%，发布节奏从月到周","pitfall":"风格不统一，第一批物料被市场部全部退回"},{"industry":"教育培训 · 内容运营","title":"课程物料的 AI 生产线","portrait":"某职业教育机构 · 年招生 2 万人","budget":"10–18 万","duration":"2 个月","points":["先定品牌语气规范","模板化生成 + 人工抽检"],"delivery":"物料制作成本降 60%，发布节奏从月到周","pitfall":"风格不统一，第一批物料被市场部全部退回"}]},{"name":"魏新","slug":"fde1056","city":"苏州","likes":14,"role":"柔性供应链顾问（测试数据）","industries":["跨境电商"],"domains":["选品与快反"],"roles":[["独立顾问","顾问","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 30 个项目的落地"]],"services":[["跨境电商选品顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"跨境电商 · 选品","title":"女装卖家的 AI 选款与追单节奏","portrait":"杭州某女装跨境卖家 · 日均上新 30 款","budget":"按 GMV 分成","duration":"3 个月","points":["用浏览与加购行为预测爆款","100–200 件试产，达标当日追单"],"delivery":"滞销率从 28% 降到 11%","pitfall":"款式预测依赖上新量，款太少的店铺跑不出效果"},{"industry":"消费品零售 · 品类规划","title":"家居品类的跨境选品改造","portrait":"深圳某家居跨境卖家 · 年 GMV 6000 万","budget":"15–25 万","duration":"2 个月","points":["先筛供应链可控的品类","预测只做排序不做定量"],"delivery":"动销率提升 22%，库存周转加快 9 天","pitfall":"供应链跟不上预测，爆了也追不出来"}]},{"name":"韩卓","slug":"fde1057","city":"上海","likes":15,"role":"柔性供应链顾问（测试数据）","industries":["跨境电商"],"domains":["选品与快反"],"roles":[["某服务商","负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 13 个项目的落地"]],"services":[["跨境电商选品顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[]},{"name":"柏言","slug":"fde1058","city":"青岛","likes":0,"role":"BI 与指标体系顾问（测试数据）","industries":["离散制造"],"domains":["数据治理","选品与快反"],"roles":[["独立顾问","负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 5 个项目的落地"]],"services":[["BI 与指标体系顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[]},{"name":"赵明强","slug":"fde1059","city":"苏州","likes":12,"role":"主数据与报表体系顾问（测试数据）","industries":["离散制造"],"domains":["数据治理"],"roles":[["独立顾问","顾问","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 22 个项目的落地"]],"services":[["BI 与指标体系顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"企业服务 · 指标体系","title":"把报表从 40 张砍到 9 张","portrait":"某服务平台 · 管理层每周看 40 张报表","budget":"10–20 万","duration":"6 周","points":["先统一口径再建仓","一个指标只留一个负责人"],"delivery":"会议时长减半，指标口径唯一","pitfall":"指标定义吵了两周，比写 SQL 难得多"}]},{"name":"郎思","slug":"fde1060","city":"常州","likes":23,"role":"工业视觉质检工程师（测试数据）","industries":["离散制造"],"domains":["质检闭环","ERP / MES 选型"],"roles":[["独立顾问","顾问","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 7 个项目的落地"]],"services":[["制造现场 AI 交付工程师","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"离散制造 · 视觉质检","title":"五金件表面缺陷的轻量视觉方案","portrait":"华南某五金厂 · 6 条产线 · 人工全检","budget":"25–40 万","duration":"3 个月","points":["先固定光照与工位","小样本先跑通再扩产线"],"delivery":"漏检率从 4% 降到 0.8%，复检人力减半","pitfall":"光照一变模型就漂，最后靠固定工位治具解决"},{"industry":"消费品零售 · 系统选型","title":"连锁零售的中台选型","portrait":"某区域连锁 · 120 家门店","budget":"20–30 万","duration":"4 周","points":["先跑断网与弱网场景","把老系统数据清洗成本单列"],"delivery":"选型结论 + 迁移风险清单","pitfall":"门店断网场景没人测，上线首周出过两次事故"}]},{"name":"王卓","slug":"fde1061","city":"苏州","likes":15,"role":"BSC 与绩效体系顾问（测试数据）","industries":["企业服务"],"domains":["战略落地"],"roles":[["自营工作室","交付负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 21 个项目的落地"]],"services":[["组织效能顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[]},{"name":"朱晓琴","slug":"fde1062","city":"深圳","likes":8,"role":"MES 交付负责人（测试数据）","industries":["离散制造","医疗健康"],"domains":["ERP / MES 实施"],"roles":[["某服务商","负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 19 个项目的落地"]],"services":[["制造业信息化实施顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"离散制造 · 系统实施","title":"汽配厂 MES 上线：先补数据再谈智能","portrait":"宁波某汽配厂 · 年产值 3 亿 · 两班倒","budget":"约 60 万","duration":"4 个月","points":["先打通工单与报工","再上异常闭环与看板"],"delivery":"报工及时率从 60% 提升到 92%","pitfall":"跳过数据治理直接上 MES，返工率极高"},{"industry":"离散制造 · 系统实施","title":"汽配厂 MES 上线：先补数据再谈智能","portrait":"宁波某汽配厂 · 年产值 3 亿 · 两班倒","budget":"约 60 万","duration":"4 个月","points":["先打通工单与报工","再上异常闭环与看板"],"delivery":"报工及时率从 60% 提升到 92%","pitfall":"跳过数据治理直接上 MES，返工率极高"}]},{"name":"俞天琳","slug":"fde1063","city":"深圳","likes":18,"role":"小单快反操盘手（测试数据）","industries":["跨境电商"],"domains":["选品与快反"],"roles":[["独立顾问","顾问","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 40 个项目的落地"]],"services":[["柔性供应链顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"跨境电商 · 选品","title":"女装卖家的 AI 选款与追单节奏","portrait":"杭州某女装跨境卖家 · 日均上新 30 款","budget":"按 GMV 分成","duration":"3 个月","points":["用浏览与加购行为预测爆款","100–200 件试产，达标当日追单"],"delivery":"滞销率从 28% 降到 11%","pitfall":"款式预测依赖上新量，款太少的店铺跑不出效果"}]},{"name":"尤景","slug":"fde1064","city":"南京","likes":5,"role":"制造业数据治理顾问（测试数据）","industries":["离散制造","企业服务"],"domains":["数据治理"],"roles":[["独立顾问","顾问","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 14 个项目的落地"]],"services":[["BI 与指标体系顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"企业服务 · 指标体系","title":"把报表从 40 张砍到 9 张","portrait":"某服务平台 · 管理层每周看 40 张报表","budget":"10–20 万","duration":"6 周","points":["先统一口径再建仓","一个指标只留一个负责人"],"delivery":"会议时长减半，指标口径唯一","pitfall":"指标定义吵了两周，比写 SQL 难得多"}]},{"name":"马和","slug":"fde1065","city":"武汉","likes":12,"role":"信息化选型顾问（测试数据）","industries":["离散制造","消费品零售"],"domains":["ERP / MES 选型"],"roles":[["自营工作室","负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 25 个项目的落地"]],"services":[["信息化选型顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"消费品零售 · 系统选型","title":"连锁零售的中台选型","portrait":"某区域连锁 · 120 家门店","budget":"20–30 万","duration":"4 周","points":["先跑断网与弱网场景","把老系统数据清洗成本单列"],"delivery":"选型结论 + 迁移风险清单","pitfall":"门店断网场景没人测，上线首周出过两次事故"},{"industry":"消费品零售 · 系统选型","title":"连锁零售的中台选型","portrait":"某区域连锁 · 120 家门店","budget":"20–30 万","duration":"4 周","points":["先跑断网与弱网场景","把老系统数据清洗成本单列"],"delivery":"选型结论 + 迁移风险清单","pitfall":"门店断网场景没人测，上线首周出过两次事故"},{"industry":"离散制造 · 系统选型","title":"汽配厂的 ERP 换与不换","portrait":"华东某汽配厂 · 年产值 3 亿 · 两班倒","budget":"选型咨询 15–25 万","duration":"3 周","points":["按真实单据流做场景打分","把二次开发量折成钱算总成本"],"delivery":"一份可执行的选型矩阵 + 报价对比","pitfall":"供应商演示都完美，一进车间就露馅"}]},{"name":"喻佩涛","slug":"fde1066","city":"武汉","likes":24,"role":"制造业信息化实施顾问（测试数据）","industries":["离散制造"],"domains":["ERP / MES 实施"],"roles":[["某服务商","负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 7 个项目的落地"]],"services":[["ERP / MES 实施总监","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"离散制造 · 系统实施","title":"汽配厂 MES 上线：先补数据再谈智能","portrait":"宁波某汽配厂 · 年产值 3 亿 · 两班倒","budget":"约 60 万","duration":"4 个月","points":["先打通工单与报工","再上异常闭环与看板"],"delivery":"报工及时率从 60% 提升到 92%","pitfall":"跳过数据治理直接上 MES，返工率极高"},{"industry":"医疗健康 · 流程实施","title":"医疗器械厂的追溯体系落地","portrait":"苏南某器械厂 · 二类器械 · 出口为主","budget":"80–120 万","duration":"5 个月","points":["法规条款先翻译成车间动作","追溯码在工序间必须有扫码动作"],"delivery":"批次追溯查询从 2 天缩到 2 分钟","pitfall":"法规口径与车间实操两张皮，改了三版表单"}]},{"name":"卫雅","slug":"fde1067","city":"成都","likes":4,"role":"制造现场 AI 交付工程师（测试数据）","industries":["离散制造","医疗健康"],"domains":["质检闭环"],"roles":[["独立顾问","顾问","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 5 个项目的落地"]],"services":[["车间异常闭环顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"离散制造 · 视觉质检","title":"五金件表面缺陷的轻量视觉方案","portrait":"华南某五金厂 · 6 条产线 · 人工全检","budget":"25–40 万","duration":"3 个月","points":["先固定光照与工位","小样本先跑通再扩产线"],"delivery":"漏检率从 4% 降到 0.8%，复检人力减半","pitfall":"光照一变模型就漂，最后靠固定工位治具解决"}]},{"name":"杨行","slug":"fde1068","city":"泉州","likes":26,"role":"AI 战略落地顾问（测试数据）","industries":["离散制造"],"domains":["AI 转型规划","数据治理"],"roles":[["某服务商","交付负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 31 个项目的落地"]],"services":[["AI 战略落地顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"企业服务 · 战略规划","title":"民营集团 AI 三年路线图","portrait":"某民营集团 · 6 家子公司 · 年营收 20 亿","budget":"咨询费 30–50 万","duration":"6 周","points":["先做 AI 成熟度体检","按子公司分开算投入产出"],"delivery":"三年路线图与年度投资节奏表","pitfall":"高管共识比方案本身难，第二轮才对齐"}]},{"name":"马建","slug":"fde1069","city":"济南","likes":3,"role":"制造业信息化实施顾问（测试数据）","industries":["离散制造"],"domains":["ERP / MES 实施"],"roles":[["某服务商","交付负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 38 个项目的落地"]],"services":[["MES 交付负责人","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"离散制造 · 系统实施","title":"汽配厂 MES 上线：先补数据再谈智能","portrait":"宁波某汽配厂 · 年产值 3 亿 · 两班倒","budget":"约 60 万","duration":"4 个月","points":["先打通工单与报工","再上异常闭环与看板"],"delivery":"报工及时率从 60% 提升到 92%","pitfall":"跳过数据治理直接上 MES，返工率极高"}]},{"name":"何卓","slug":"fde1070","city":"无锡","likes":17,"role":"制造业数据治理顾问（测试数据）","industries":["离散制造","企业服务"],"domains":["数据治理"],"roles":[["自营工作室","负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 39 个项目的落地"]],"services":[["BI 与指标体系顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"离散制造 · 主数据","title":"物料主数据治理：从 8 万条到 2 万条","portrait":"华东某装备厂 · 物料编码混乱 · 三套系统","budget":"30–50 万","duration":"4 个月","points":["先定编码规则再谈清洗","治理结果要挂到考核上"],"delivery":"一物多码从 37% 降到 4%","pitfall":"各部门都认自己的编码，最后靠奖金挂钩才推下去"},{"industry":"离散制造 · 主数据","title":"物料主数据治理：从 8 万条到 2 万条","portrait":"华东某装备厂 · 物料编码混乱 · 三套系统","budget":"30–50 万","duration":"4 个月","points":["先定编码规则再谈清洗","治理结果要挂到考核上"],"delivery":"一物多码从 37% 降到 4%","pitfall":"各部门都认自己的编码，最后靠奖金挂钩才推下去"}]},{"name":"章晓华","slug":"fde1071","city":"合肥","likes":13,"role":"企业 AI 转型顾问（测试数据）","industries":["离散制造","企业服务"],"domains":["AI 转型规划"],"roles":[["独立顾问","负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 39 个项目的落地"]],"services":[["企业 AI 转型顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"离散制造 · AI 转型规划","title":"多品种小批量工厂的 AI 路线抉择","portrait":"华南某精密结构件厂 · 约 260 人 · 年产值 1.2 亿","budget":"120–200 万区间分期（非承诺值）","duration":"数周","points":["先盘存量再谈方案，不推倒重来","两条路线摆桌面，用愿不愿动 ERP 做分水岭"],"delivery":"两版董事会级方案 + 选型决策清单","pitfall":"客户对动 ERP 极度敏感，ROI 只能给区间"}]},{"name":"章梦瑶","slug":"fde1072","city":"武汉","likes":18,"role":"柔性供应链顾问（测试数据）","industries":["跨境电商","消费品零售"],"domains":["选品与快反"],"roles":[["某服务商","交付负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 27 个项目的落地"]],"services":[["柔性供应链顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[]},{"name":"潘建","slug":"fde1073","city":"成都","likes":24,"role":"车间异常闭环顾问（测试数据）","industries":["离散制造"],"domains":["质检闭环","选品与快反"],"roles":[["某服务商","负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 15 个项目的落地"]],"services":[["车间异常闭环顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"离散制造 · 外观质检","title":"注塑车间的首件确认数字化","portrait":"华东某 80 人注塑厂 · 首件确认靠纸质记录","budget":"8–15 万","duration":"两周试点","points":["首件照片与工艺参数收成一张卡","异常项直接推给班组长"],"delivery":"试点班组两周内停用纸质首件单","pitfall":"老师傅不填系统，靠班组长代录过渡两周"}]},{"name":"潘梦","slug":"fde1074","city":"合肥","likes":2,"role":"车间异常闭环顾问（测试数据）","industries":["离散制造","医疗健康"],"domains":["质检闭环"],"roles":[["某服务商","负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 38 个项目的落地"]],"services":[["工业视觉质检工程师","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"离散制造 · 视觉质检","title":"五金件表面缺陷的轻量视觉方案","portrait":"华南某五金厂 · 6 条产线 · 人工全检","budget":"25–40 万","duration":"3 个月","points":["先固定光照与工位","小样本先跑通再扩产线"],"delivery":"漏检率从 4% 降到 0.8%，复检人力减半","pitfall":"光照一变模型就漂，最后靠固定工位治具解决"}]},{"name":"沈静鹏","slug":"fde1075","city":"无锡","likes":15,"role":"BI 与指标体系顾问（测试数据）","industries":["离散制造"],"domains":["数据治理"],"roles":[["独立顾问","负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 7 个项目的落地"]],"services":[["主数据与报表体系顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"企业服务 · 指标体系","title":"把报表从 40 张砍到 9 张","portrait":"某服务平台 · 管理层每周看 40 张报表","budget":"10–20 万","duration":"6 周","points":["先统一口径再建仓","一个指标只留一个负责人"],"delivery":"会议时长减半，指标口径唯一","pitfall":"指标定义吵了两周，比写 SQL 难得多"},{"industry":"企业服务 · 指标体系","title":"把报表从 40 张砍到 9 张","portrait":"某服务平台 · 管理层每周看 40 张报表","budget":"10–20 万","duration":"6 周","points":["先统一口径再建仓","一个指标只留一个负责人"],"delivery":"会议时长减半，指标口径唯一","pitfall":"指标定义吵了两周，比写 SQL 难得多"}]},{"name":"唐新","slug":"fde1076","city":"济南","likes":11,"role":"企业 AI 转型顾问（测试数据）","industries":["离散制造"],"domains":["AI 转型规划","ERP / MES 实施"],"roles":[["某服务商","交付负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 25 个项目的落地"]],"services":[["AI 战略落地顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"企业服务 · 战略规划","title":"民营集团 AI 三年路线图","portrait":"某民营集团 · 6 家子公司 · 年营收 20 亿","budget":"咨询费 30–50 万","duration":"6 周","points":["先做 AI 成熟度体检","按子公司分开算投入产出"],"delivery":"三年路线图与年度投资节奏表","pitfall":"高管共识比方案本身难，第二轮才对齐"},{"industry":"医疗健康 · 流程实施","title":"医疗器械厂的追溯体系落地","portrait":"苏南某器械厂 · 二类器械 · 出口为主","budget":"80–120 万","duration":"5 个月","points":["法规条款先翻译成车间动作","追溯码在工序间必须有扫码动作"],"delivery":"批次追溯查询从 2 天缩到 2 分钟","pitfall":"法规口径与车间实操两张皮，改了三版表单"}]},{"name":"严佳群","slug":"fde1077","city":"苏州","likes":6,"role":"BI 与指标体系顾问（测试数据）","industries":["离散制造"],"domains":["数据治理"],"roles":[["某服务商","交付负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 4 个项目的落地"]],"services":[["BI 与指标体系顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[]},{"name":"华天","slug":"fde1078","city":"杭州","likes":15,"role":"小单快反操盘手（测试数据）","industries":["跨境电商"],"domains":["选品与快反"],"roles":[["自营工作室","负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 28 个项目的落地"]],"services":[["跨境电商选品顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[]},{"name":"谢行","slug":"fde1079","city":"上海","likes":6,"role":"跨境投放顾问（测试数据）","industries":["跨境电商"],"domains":["营销内容生成"],"roles":[["某服务商","交付负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 13 个项目的落地"]],"services":[["品牌内容运营顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"跨境电商 · 内容生产","title":"多语言详情页的批量生成","portrait":"广州某跨境卖家 · 6 个站点 · SKU 4000+","budget":"8–15 万","duration":"6 周","points":["先做术语库再做生成","关键类目保留人工终审"],"delivery":"详情页产出从 3 天/款到 2 小时/款","pitfall":"机翻痕迹被平台判低质，加了人工校对层才过"}]},{"name":"高嘉","slug":"fde1080","city":"青岛","likes":21,"role":"制造业信息化实施顾问（测试数据）","industries":["离散制造"],"domains":["ERP / MES 实施"],"roles":[["独立顾问","负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 19 个项目的落地"]],"services":[["MES 交付负责人","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"医疗健康 · 流程实施","title":"医疗器械厂的追溯体系落地","portrait":"苏南某器械厂 · 二类器械 · 出口为主","budget":"80–120 万","duration":"5 个月","points":["法规条款先翻译成车间动作","追溯码在工序间必须有扫码动作"],"delivery":"批次追溯查询从 2 天缩到 2 分钟","pitfall":"法规口径与车间实操两张皮，改了三版表单"}]},{"name":"许慕强","slug":"fde1081","city":"无锡","likes":5,"role":"主数据与报表体系顾问（测试数据）","industries":["离散制造","企业服务"],"domains":["数据治理"],"roles":[["某服务商","交付负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 24 个项目的落地"]],"services":[["主数据与报表体系顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"企业服务 · 指标体系","title":"把报表从 40 张砍到 9 张","portrait":"某服务平台 · 管理层每周看 40 张报表","budget":"10–20 万","duration":"6 周","points":["先统一口径再建仓","一个指标只留一个负责人"],"delivery":"会议时长减半，指标口径唯一","pitfall":"指标定义吵了两周，比写 SQL 难得多"},{"industry":"离散制造 · 主数据","title":"物料主数据治理：从 8 万条到 2 万条","portrait":"华东某装备厂 · 物料编码混乱 · 三套系统","budget":"30–50 万","duration":"4 个月","points":["先定编码规则再谈清洗","治理结果要挂到考核上"],"delivery":"一物多码从 37% 降到 4%","pitfall":"各部门都认自己的编码，最后靠奖金挂钩才推下去"}]},{"name":"许卓","slug":"fde1082","city":"无锡","likes":4,"role":"内部知识助手顾问（测试数据）","industries":["企业服务"],"domains":["知识库问答","质检闭环"],"roles":[["自营工作室","负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 24 个项目的落地"]],"services":[["内部知识助手顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[]},{"name":"罗若青","slug":"fde1083","city":"上海","likes":2,"role":"BSC 与绩效体系顾问（测试数据）","industries":["企业服务"],"domains":["战略落地"],"roles":[["独立顾问","负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 37 个项目的落地"]],"services":[["BSC 与绩效体系顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"公用事业 · 绩效体系","title":"从 KPI 考核到 OKR 的过渡","portrait":"某市政服务公司 · 1400 人","budget":"20–35 万","duration":"5 个月","points":["先培训再上线系统","关键结果必须可复盘"],"delivery":"部门目标对齐率从 45% 提升到 82%","pitfall":"中层把 OKR 当 KPI 填，前两个月全是数字指标"}]},{"name":"方静","slug":"fde1084","city":"苏州","likes":1,"role":"跨境电商选品顾问（测试数据）","industries":["跨境电商","消费品零售"],"domains":["选品与快反"],"roles":[["独立顾问","顾问","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 32 个项目的落地"]],"services":[["跨境电商选品顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"消费品零售 · 品类规划","title":"家居品类的跨境选品改造","portrait":"深圳某家居跨境卖家 · 年 GMV 6000 万","budget":"15–25 万","duration":"2 个月","points":["先筛供应链可控的品类","预测只做排序不做定量"],"delivery":"动销率提升 22%，库存周转加快 9 天","pitfall":"供应链跟不上预测，爆了也追不出来"},{"industry":"消费品零售 · 品类规划","title":"家居品类的跨境选品改造","portrait":"深圳某家居跨境卖家 · 年 GMV 6000 万","budget":"15–25 万","duration":"2 个月","points":["先筛供应链可控的品类","预测只做排序不做定量"],"delivery":"动销率提升 22%，库存周转加快 9 天","pitfall":"供应链跟不上预测，爆了也追不出来"},{"industry":"跨境电商 · 选品","title":"女装卖家的 AI 选款与追单节奏","portrait":"杭州某女装跨境卖家 · 日均上新 30 款","budget":"按 GMV 分成","duration":"3 个月","points":["用浏览与加购行为预测爆款","100–200 件试产，达标当日追单"],"delivery":"滞销率从 28% 降到 11%","pitfall":"款式预测依赖上新量，款太少的店铺跑不出效果"}]},{"name":"潘志川","slug":"fde1085","city":"长沙","likes":18,"role":"品牌内容运营顾问（测试数据）","industries":["跨境电商"],"domains":["营销内容生成"],"roles":[["独立顾问","负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 4 个项目的落地"]],"services":[["跨境投放顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"跨境电商 · 内容生产","title":"多语言详情页的批量生成","portrait":"广州某跨境卖家 · 6 个站点 · SKU 4000+","budget":"8–15 万","duration":"6 周","points":["先做术语库再做生成","关键类目保留人工终审"],"delivery":"详情页产出从 3 天/款到 2 小时/款","pitfall":"机翻痕迹被平台判低质，加了人工校对层才过"}]},{"name":"柏若琴","slug":"fde1086","city":"杭州","likes":15,"role":"制造业信息化实施顾问（测试数据）","industries":["离散制造"],"domains":["ERP / MES 实施"],"roles":[["某服务商","负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 37 个项目的落地"]],"services":[["MES 交付负责人","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"离散制造 · 系统实施","title":"汽配厂 MES 上线：先补数据再谈智能","portrait":"宁波某汽配厂 · 年产值 3 亿 · 两班倒","budget":"约 60 万","duration":"4 个月","points":["先打通工单与报工","再上异常闭环与看板"],"delivery":"报工及时率从 60% 提升到 92%","pitfall":"跳过数据治理直接上 MES，返工率极高"}]},{"name":"姜慧","slug":"fde1087","city":"济南","likes":6,"role":"BI 与指标体系顾问（测试数据）","industries":["离散制造"],"domains":["数据治理","ERP / MES 实施"],"roles":[["某服务商","交付负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 38 个项目的落地"]],"services":[["制造业数据治理顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"离散制造 · 主数据","title":"物料主数据治理：从 8 万条到 2 万条","portrait":"华东某装备厂 · 物料编码混乱 · 三套系统","budget":"30–50 万","duration":"4 个月","points":["先定编码规则再谈清洗","治理结果要挂到考核上"],"delivery":"一物多码从 37% 降到 4%","pitfall":"各部门都认自己的编码，最后靠奖金挂钩才推下去"}]},{"name":"严新敏","slug":"fde1088","city":"合肥","likes":0,"role":"组织效能顾问（测试数据）","industries":["企业服务","公用事业"],"domains":["战略落地"],"roles":[["自营工作室","交付负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 12 个项目的落地"]],"services":[["组织效能顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"企业服务 · 战略执行","title":"战略地图变成可计算的系统","portrait":"战略与绩效两张皮的中小企业","budget":"自研产品","duration":"持续迭代","points":["三层结构：战略地图 + 计分卡 + 风控推演","KPI 管道带证据链"],"delivery":"已发布 v0.1.0，55 项自动化测试通过","pitfall":"战略类产品最难的是让老板每周真的用一次"}]},{"name":"褚佳川","slug":"fde1089","city":"深圳","likes":1,"role":"战略执行顾问（测试数据）","industries":["企业服务","公用事业"],"domains":["战略落地","质检闭环"],"roles":[["自营工作室","负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 23 个项目的落地"]],"services":[["战略执行顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[]},{"name":"钱建青","slug":"fde1090","city":"武汉","likes":0,"role":"制造业系统架构顾问（测试数据）","industries":["离散制造"],"domains":["ERP / MES 选型","营销内容生成"],"roles":[["某服务商","负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 38 个项目的落地"]],"services":[["ERP / MES 选型顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"离散制造 · 系统选型","title":"汽配厂的 ERP 换与不换","portrait":"华东某汽配厂 · 年产值 3 亿 · 两班倒","budget":"选型咨询 15–25 万","duration":"3 周","points":["按真实单据流做场景打分","把二次开发量折成钱算总成本"],"delivery":"一份可执行的选型矩阵 + 报价对比","pitfall":"供应商演示都完美，一进车间就露馅"},{"industry":"跨境电商 · 内容生产","title":"多语言详情页的批量生成","portrait":"广州某跨境卖家 · 6 个站点 · SKU 4000+","budget":"8–15 万","duration":"6 周","points":["先做术语库再做生成","关键类目保留人工终审"],"delivery":"详情页产出从 3 天/款到 2 小时/款","pitfall":"机翻痕迹被平台判低质，加了人工校对层才过"}]},{"name":"魏佳","slug":"fde1091","city":"无锡","likes":15,"role":"企业知识库方案顾问（测试数据）","industries":["企业服务"],"domains":["知识库问答","战略落地"],"roles":[["独立顾问","顾问","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 16 个项目的落地"]],"services":[["企业知识库方案顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"企业服务 · 内部知识","title":"售后知识库的问答机器人","portrait":"某设备厂商 · 售后团队 60 人 · 文档 3000 份","budget":"15–25 万","duration":"3 个月","points":["先做文档清洗再做检索","答案必须带出处"],"delivery":"一次解决率从 61% 提升到 84%","pitfall":"文档质量太差，检索准但答非所问"}]},{"name":"韩天","slug":"fde1092","city":"南京","likes":1,"role":"信息化选型顾问（测试数据）","industries":["离散制造","消费品零售"],"domains":["ERP / MES 选型"],"roles":[["自营工作室","负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 34 个项目的落地"]],"services":[["ERP / MES 选型顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[]},{"name":"马思","slug":"fde1093","city":"杭州","likes":25,"role":"组织效能顾问（测试数据）","industries":["企业服务","公用事业"],"domains":["战略落地","选品与快反"],"roles":[["自营工作室","负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 40 个项目的落地"]],"services":[["BSC 与绩效体系顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"企业服务 · 战略执行","title":"战略地图变成可计算的系统","portrait":"战略与绩效两张皮的中小企业","budget":"自研产品","duration":"持续迭代","points":["三层结构：战略地图 + 计分卡 + 风控推演","KPI 管道带证据链"],"delivery":"已发布 v0.1.0，55 项自动化测试通过","pitfall":"战略类产品最难的是让老板每周真的用一次"},{"industry":"跨境电商 · 选品","title":"女装卖家的 AI 选款与追单节奏","portrait":"杭州某女装跨境卖家 · 日均上新 30 款","budget":"按 GMV 分成","duration":"3 个月","points":["用浏览与加购行为预测爆款","100–200 件试产，达标当日追单"],"delivery":"滞销率从 28% 降到 11%","pitfall":"款式预测依赖上新量，款太少的店铺跑不出效果"}]},{"name":"秦初语","slug":"fde1094","city":"长沙","likes":3,"role":"客服 AI 落地顾问（测试数据）","industries":["企业服务","医疗健康"],"domains":["知识库问答"],"roles":[["独立顾问","顾问","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 20 个项目的落地"]],"services":[["企业知识库方案顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"企业服务 · 内部知识","title":"售后知识库的问答机器人","portrait":"某设备厂商 · 售后团队 60 人 · 文档 3000 份","budget":"15–25 万","duration":"3 个月","points":["先做文档清洗再做检索","答案必须带出处"],"delivery":"一次解决率从 61% 提升到 84%","pitfall":"文档质量太差，检索准但答非所问"}]},{"name":"潘雅敏","slug":"fde1095","city":"成都","likes":10,"role":"制造业数据治理顾问（测试数据）","industries":["离散制造"],"domains":["数据治理"],"roles":[["某服务商","负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 26 个项目的落地"]],"services":[["BI 与指标体系顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"离散制造 · 主数据","title":"物料主数据治理：从 8 万条到 2 万条","portrait":"华东某装备厂 · 物料编码混乱 · 三套系统","budget":"30–50 万","duration":"4 个月","points":["先定编码规则再谈清洗","治理结果要挂到考核上"],"delivery":"一物多码从 37% 降到 4%","pitfall":"各部门都认自己的编码，最后靠奖金挂钩才推下去"}]},{"name":"卫思佑","slug":"fde1096","city":"长沙","likes":4,"role":"客服 AI 落地顾问（测试数据）","industries":["企业服务"],"domains":["知识库问答"],"roles":[["自营工作室","交付负责人","制造业与跨境场景交付"]],"experiences":[["现场交付","参与过 5 个项目的落地"]],"services":[["内部知识助手顾问","按场景报价，先诊断后方案"]],"collabs":[["寻找试点客户","愿意先做一个班组或单店场景"]],"cases":[{"industry":"企业服务 · 内部知识","title":"售后知识库的问答机器人","portrait":"某设备厂商 · 售后团队 60 人 · 文档 3000 份","budget":"15–25 万","duration":"3 个月","points":["先做文档清洗再做检索","答案必须带出处"],"delivery":"一次解决率从 61% 提升到 84%","pitfall":"文档质量太差，检索准但答非所问"},{"industry":"企业服务 · 内部知识","title":"售后知识库的问答机器人","portrait":"某设备厂商 · 售后团队 60 人 · 文档 3000 份","budget":"15–25 万","duration":"3 个月","points":["先做文档清洗再做检索","答案必须带出处"],"delivery":"一次解决率从 61% 提升到 84%","pitfall":"文档质量太差，检索准但答非所问"}]}];
+
+let filterIndustry = null, filterDomain = null, sortKey = "likes", keyword = "";
+
+const el = {
+  grid: document.getElementById("grid"),
+  empty: document.getElementById("empty"),
+  mask: document.getElementById("mask"),
+  drawer: document.getElementById("drawer"),
+  sPeople: document.getElementById("s-people"),
+  sInd: document.getElementById("s-ind"),
+  sCase: document.getElementById("s-case"),
+  industryTabs: document.getElementById("industryTabs"),
+  count: document.getElementById("count"),
+  search: document.getElementById("search"),
+  list: document.getElementById("list"),
+  pager: document.getElementById("pager"),
+  mini: document.getElementById("minipager"),
+  toolbar: document.querySelector(".toolbar")
+};
+
+function caseCount(p) { return p.cases.length; }
+
+function industryOptions() {
+  const s = new Set();
+  people.forEach(p => p.industries.forEach(i => s.add(i)));
+  return [...s];
+}
+function domainOptions() {
+  const s = new Set();
+  people.forEach(p => p.domains.forEach(i => s.add(i)));
+  return [...s];
+}
+
+function closePickers() {
+  document.querySelectorAll(".pick.open").forEach(p => {
+    p.classList.remove("open");
+    const b = p.querySelector(".pick-btn");
+    if (b) b.setAttribute("aria-expanded", "false");
+  });
+}
+document.addEventListener("click", closePickers);
+
+function makePicker(id, items, getValue, onPick, prefix) {
+  const root = document.getElementById(id);
+  const btn = root.querySelector(".pick-btn");
+  const label = root.querySelector(".pick-label");
+  const panel = root.querySelector(".pick-panel");
+
+  function paintPanel() {
+    const cur = getValue() == null ? "" : String(getValue());
+    panel.innerHTML = items().map(o =>
+      '<button class="pick-item' + (String(o.v) === cur ? " on" : "") +
+      '" type="button" role="option" data-v="' + o.v + '"><i class="tick"></i><span>' + o.label + "</span></button>"
+    ).join("");
+  }
+  function paintLabel() {
+    const list = items();
+    const cur = getValue() == null ? "" : String(getValue());
+    const hit = list.find(o => String(o.v) === cur);
+    label.textContent = prefix
+      ? (cur && hit ? prefix + " · " + hit.label : prefix)
+      : (hit ? hit.label : list[0].label);
+  }
+  btn.addEventListener("click", e => {
+    e.stopPropagation();
+    const wasOpen = root.classList.contains("open");
+    closePickers();
+    if (wasOpen) return;
+    paintPanel();
+    root.classList.add("open");
+    btn.setAttribute("aria-expanded", "true");
+  });
+  panel.addEventListener("click", e => {
+    const it = e.target.closest(".pick-item");
+    if (!it) return;
+    closePickers();
+    onPick(it.dataset.v);
+  });
+  return { sync: paintLabel };
+}
+
+function renderFilters() {
+  const opts = [{ v: null, label: "全部" }, ...industryOptions().map(o => ({ v: o, label: o }))];
+  el.industryTabs.innerHTML = "";
+  opts.forEach(o => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "tab" + (filterIndustry === o.v ? " on" : "");
+    b.textContent = o.label;
+    b.onclick = () => { filterIndustry = o.v; page = 1; render(); };
+    el.industryTabs.appendChild(b);
+  });
+
+  domainPicker.sync();
+}
+
+function renderStats() {
+  el.sPeople.textContent = people.length;
+  el.sInd.textContent = industryOptions().length;
+  el.sCase.textContent = people.reduce((n, p) => n + caseCount(p), 0);
+}
+
+function visiblePeople() {
+  const kw = keyword.trim().toLowerCase();
+  return people
+    .filter(p => !filterIndustry || p.industries.includes(filterIndustry))
+    .filter(p => !filterDomain || p.domains.includes(filterDomain))
+    .filter(p => !kw || p.name.toLowerCase().includes(kw) ||
+      p.role.toLowerCase().includes(kw) ||
+      p.industries.concat(p.domains).some(t => t.toLowerCase().includes(kw)))
+    .sort((a, b) => sortKey === "cases"
+      ? caseCount(b) - caseCount(a) || b.likes - a.likes
+      : b.likes - a.likes || caseCount(b) - caseCount(a));
+}
+
+let PAGE_SIZE = 24; // 卡片视图下由视口高度动态计算（行 × 列）
+let page = 1, viewMode = "card";
+
+function cardHtml(p) {
+  return '<div class="shine" aria-hidden="true"></div>' +
+    '<div class="card-top"><span class="mark">FDE · IDENTITY</span><span class="city">' + p.city + "</span></div>" +
+    '<h2 class="name">' + p.name + "</h2>" +
+    '<div class="role">' + p.role + "</div>" +
+    '<div class="meta"><b>' + caseCount(p) + '</b> 个案例<span class="dotsep">·</span><b>' +
+      p.industries.length + '</b> 个行业<span class="dotsep">·</span><b>' + p.likes + "</b> 赞</div>" +
+    '<div class="tags">' + tagLine(p) + "</div>" +
+    caseBlock(p) +
+    '<div class="foot">' +
+      '<button class="btn" type="button" data-preview="1">预览档案</button>' +
+      '<a class="btn solid" href="' + HOST + "/t/" + p.slug + '" target="_blank" rel="noopener" data-go="1">进入主页 →</a>' +
+    "</div>";
+}
+
+function tagLine(p) {
+  return [
+    ...p.industries.slice(0, 2).map(t => "<span>" + t + "</span>"),
+    ...p.domains.slice(0, 1).map(t => '<span class="dm">' + t + "</span>")
+  ].join('<span class="dotsep">·</span>');
+}
+
+function caseBlock(p) {
+  const first = p.cases[0];
+  return first
+    ? '<div class="case"><div class="clabel">代表案例</div><div class="ctitle">' + first.title +
+      '</div><div class="cbudget">' + first.budget + " · " + first.duration + "</div></div>"
+    : '<div class="case empty">暂无案例，档案整理中——不编数据</div>';
+}
+
+function renderCards(slice) {
+  el.grid.innerHTML = "";
+  slice.forEach(p => {
+    const card = document.createElement("article");
+    card.className = "card";
+    card.innerHTML = cardHtml(p);
+    card.addEventListener("click", e => {
+      if (e.target.closest("[data-preview]")) { e.stopPropagation(); openDrawer(p); return; }
+      if (e.target.closest("[data-go]")) return;
+      window.open(HOST + "/t/" + p.slug, "_blank");
+    });
+    el.grid.appendChild(card);
+  });
+}
+
+function renderRows(slice) {
+  el.list.innerHTML = "";
+  slice.forEach(p => {
+    const row = document.createElement("div");
+    row.className = "row";
+    const first = p.cases[0];
+    row.innerHTML =
+      '<span class="rname">' + p.name + "</span>" +
+      '<span class="rrole">' + p.role.replace("（测试数据）", "") + "</span>" +
+      '<span class="rtags">' + tagLine(p) + "</span>" +
+      '<span class="rcase"><b>' + caseCount(p) + "</b> 例</span>" +
+      (first
+        ? '<span class="rrep">' + first.title + "</span>"
+        : '<span class="rrep empty">暂无案例</span>') +
+      '<span class="rgo">→</span>';
+    row.addEventListener("click", e => {
+      if (e.shiftKey) { openDrawer(p); return; }
+      window.open(HOST + "/t/" + p.slug, "_blank");
+    });
+    el.list.appendChild(row);
+  });
+}
+
+function renderPager(total, pages, from, shown) {
+  if (!total) { el.pager.innerHTML = ""; return; }
+  let h = '<span class="pmeta">第 ' + (from + 1) + "–" + (from + shown) + " 位 · 共 " + total + " 位</span>";
+  if (pages > 1) {
+    h += '<nav class="pnums">';
+    h += '<button class="pnum" type="button" data-p="' + (page - 1) + '"' + (page === 1 ? " disabled" : "") + ">‹</button>";
+    for (let i = 1; i <= pages; i++) {
+      h += '<button class="pnum' + (i === page ? " on" : "") + '" type="button" data-p="' + i + '">' + i + "</button>";
+    }
+    h += '<button class="pnum" type="button" data-p="' + (page + 1) + '"' + (page === pages ? " disabled" : "") + ">›</button>";
+    h += "</nav>";
+  }
+  el.pager.innerHTML = h;
+}
+
+function render() {
+  renderFilters();
+  const list = visiblePeople();
+  const total = list.length;
+  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  if (page > pages) page = pages;
+  const from = (page - 1) * PAGE_SIZE;
+  const slice = list.slice(from, from + PAGE_SIZE);
+
+  el.empty.style.display = total ? "none" : "block";
+  el.count.textContent = total + " / " + people.length + " 位";
+
+  const isCard = viewMode === "card";
+  el.grid.style.display = isCard ? "" : "none";
+  el.list.style.display = isCard ? "none" : "";
+  if (!isCard) { el.grid.classList.remove("fill"); el.grid.style.height = ""; }
+
+  if (isCard) renderCards(slice); else renderRows(slice);
+  if (isCard) fitGridToViewport(); // 可能更新 PAGE_SIZE 并重渲染卡片
+
+  // 用（可能已更新的）PAGE_SIZE 计算最终分页状态，避免被旧值覆盖
+  const pagesF = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  if (page > pagesF) page = pagesF;
+  const fromF = (page - 1) * PAGE_SIZE;
+  renderPager(total, pagesF, fromF, Math.min(PAGE_SIZE, total - fromF));
+  renderMiniPager(pagesF);
+}
+
+/* ===== 一屏填满：按视口高度算行数，行高均分 ===== */
+let protoH = 0; // 行高原型：首轮测出的"最高卡片"自然高度，之后固定，防止页大小在翻页间抖动
+
+function fitGridToViewport() {
+  const cards = el.grid.querySelectorAll(".card");
+  if (!cards.length) { el.grid.classList.remove("fill"); el.grid.style.height = ""; el.mini.classList.remove("show"); return; }
+
+  const cols = getComputedStyle(el.grid).gridTemplateColumns.split(" ").length;
+  const gap = parseFloat(getComputedStyle(el.grid).rowGap) || 30;
+
+  // 先解除锁定，量自然高度
+  el.grid.classList.remove("fill");
+  el.grid.style.height = "";
+  if (!protoH) {
+    let m = 0;
+    cards.forEach(c => { m = Math.max(m, c.offsetHeight); });
+    protoH = m;
+  }
+
+  // 卡片区可用高度 = 视口 - sticky 工具栏 - 底部呼吸位
+  const toolH = el.toolbar.offsetHeight || 64;
+  const avail = window.innerHeight - toolH - 56;
+  const rows = Math.max(2, Math.floor((avail + gap) / (protoH + gap)));
+  const newSize = cols * rows;
+
+  if (newSize !== PAGE_SIZE) {
+    PAGE_SIZE = newSize;
+    const list = visiblePeople();
+    const pages = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
+    if (page > pages) page = pages;
+    const from = (page - 1) * PAGE_SIZE;
+    const slice2 = list.slice(from, from + PAGE_SIZE);
+    renderCards(slice2);
+    renderPager(list.length, pages, from, slice2.length);
+  }
+  renderMiniPager(Math.max(1, Math.ceil(visiblePeople().length / PAGE_SIZE)));
+
+  // 锁定 grid 高度 = 视口剩余空间，行均分拉伸 → 一屏恰好填满
+  el.grid.style.height = avail + "px";
+  el.grid.classList.add("fill");
+}
+
+/* ===== 右下角常驻页码 ===== */
+function renderMiniPager(pages) {
+  if (viewMode !== "card" || pages <= 1) { el.mini.classList.remove("show"); return; }
+  el.mini.classList.add("show");
+  el.mini.innerHTML =
+    '<button type="button" data-mp="-1" aria-label="上一页"' + (page === 1 ? " disabled" : "") + ">‹</button>" +
+    '<span class="mnum"><b>' + page + "</b> / " + pages + "</span>" +
+    '<button type="button" data-mp="1" aria-label="下一页"' + (page === pages ? " disabled" : "") + ">›</button>";
+}
+
+function gotoPage(n) {
+  page = n;
+  render();
+  // 第 1 页回页面顶部；其余页滚到 sticky 工具栏贴顶
+  const top = n === 1 ? 0 : el.toolbar.getBoundingClientRect().top + window.scrollY - 6;
+  window.scrollTo({ top: top > 0 ? top : 0, behavior: "smooth" });
+}
+
+el.pager.addEventListener("click", e => {
+  const b = e.target.closest("[data-p]");
+  if (!b || b.disabled) return;
+  gotoPage(Number(b.dataset.p));
+});
+
+el.mini.addEventListener("click", e => {
+  const b = e.target.closest("[data-mp]");
+  if (!b || b.disabled) return;
+  gotoPage(page + Number(b.dataset.mp));
+});
+
+/* 翻页通道：页码器点击（右下角/底部）+ 键盘方向键。不做滚轮触底翻页——反常规，容易误会 */
+
+/* 视口变化：重测行高原型并重排 */
+let rzT;
+window.addEventListener("resize", () => {
+  clearTimeout(rzT);
+  rzT = setTimeout(() => { protoH = 0; render(); }, 160);
+});
+
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-view]");
+  if (!b) return;
+  viewMode = b.dataset.view;
+  page = 1;
+  if (viewMode === "list") PAGE_SIZE = 24; // 列表行矮，恢复常规页大小；切回卡片时 fitGrid 会按视口重算
+  document.querySelectorAll("[data-view]").forEach(x => x.classList.toggle("on", x === b));
+  render();
+});
+
+function openDrawer(p) {
+  const sec = (title, html) => html ? '<section class="dsec"><h3>' + title + "</h3>" + html + "</section>" : "";
+
+  const rolesHtml = p.roles.length
+    ? p.roles.map(r => "<p><b>" + r[0] + "</b> · " + r[1] + "<br>" + r[2] + "</p>").join("")
+    : "<p>待补充</p>";
+  const expHtml = p.experiences.length
+    ? p.experiences.map(r => "<p><b>" + r[0] + "</b><br>" + r[1] + "</p>").join("")
+    : "";
+  const svcHtml = p.services.length
+    ? p.services.map((r, i) => "<p><b>0" + (i + 1) + "　" + r[0] + "</b><br>" + r[1] + "</p>").join("")
+    : "";
+  const collabHtml = p.collabs.length
+    ? p.collabs.map(r => "<p><b>" + r[0] + "</b><br>" + r[1] + "</p>").join("")
+    : "";
+  const casesHtml = p.cases.length
+    ? p.cases.map(c =>
+        '<div class="dcase"><div class="ind">' + c.industry + "</div><h4>" + c.title + "</h4>" +
+        "<p style=\"font-size:12.6px;color:#5e6a63;margin:0\">" + c.portrait + "</p>" +
+        "<ul>" + c.points.map(x => "<li>" + x + "</li>").join("") + "</ul>" +
+        '<div class="meta">投入 ' + c.budget + " · 周期 " + c.duration + " · 交付 " + c.delivery + "</div>" +
+        '<div class="meta" style="color:#8a5a2a">坑 · ' + c.pitfall + "</div></div>"
+      ).join("")
+    : '<p style="color:#5e6a63">暂无案例。这位的档案还在整理，宁缺不编。</p>';
+
+  el.drawer.innerHTML =
+    '<button class="close" type="button" id="closeDrawer">✕</button>' +
+    '<p class="kicker" style="margin:0;font-size:11px;letter-spacing:.2em;color:#c4a574">FDE · PROFILE</p>' +
+    "<h2>" + p.name + "</h2>" +
+    '<p class="drole">' + p.role + "　·　" + p.city + "</p>" +
+    '<div class="tags" style="margin-top:14px">' +
+      p.industries.map(t => '<span class="tag">' + t + "</span>").join("") +
+      p.domains.map(t => '<span class="tag domain">' + t + "</span>").join("") +
+    "</div>" +
+    sec("交付数据", "<p><b>" + caseCount(p) + " 个案例</b> · 覆盖 " + p.industries.length + " 个行业 · " + p.likes + " 个赞</p>") +
+    sec("主要身份", rolesHtml) + sec("过往经历", expHtml) +
+    sec("提供的服务", svcHtml) + sec("正在寻找的合作", collabHtml) +
+    sec("实战案例", casesHtml) +
+    '<div class="cta"><a class="btn solid" href="' + HOST + "/t/" + p.slug + '" target="_blank" rel="noopener">进入完整主页 →</a>' +
+    '<button class="btn" type="button" id="closeDrawer2">关闭</button></div>';
+
+  el.mask.classList.add("open");
+  el.drawer.scrollTop = 0;
+  document.getElementById("closeDrawer").onclick = closeDrawer;
+  document.getElementById("closeDrawer2").onclick = closeDrawer;
+}
+
+function closeDrawer() { el.mask.classList.remove("open"); }
+el.mask.addEventListener("click", e => { if (e.target === el.mask) closeDrawer(); });
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") { closeDrawer(); closePickers(); return; }
+  if (viewMode !== "card" || el.mask.classList.contains("open")) return;
+  if (e.key === "ArrowRight" || e.key === "PageDown") { if (page < totalPages()) gotoPage(page + 1); }
+  if (e.key === "ArrowLeft" || e.key === "PageUp") { if (page > 1) gotoPage(page - 1); }
+});
+
+let t;
+el.search.addEventListener("input", e => {
+  clearTimeout(t);
+  t = setTimeout(() => { keyword = e.target.value; page = 1; render(); }, 140);
+});
+
+const domainPicker = makePicker(
+  "domainPick",
+  () => [{ v: "", label: "全部" }, ...domainOptions().map(o => ({ v: o, label: o }))],
+  () => filterDomain || "",
+  v => { filterDomain = v || null; page = 1; render(); },
+  "能力域"
+);
+
+const sortPicker = makePicker(
+  "sortPick",
+  () => [{ v: "likes", label: "按点赞" }, { v: "cases", label: "按案例数" }],
+  () => sortKey,
+  v => { sortKey = v; page = 1; render(); },
+  null
+);
+
+renderStats();
+render();
+
+const MAX_TY = 9, MAX_TX = 7;
+const tilts = new WeakMap();
+let rafTilt = 0;
+
+function tiltOf(card) {
+  let s = tilts.get(card);
+  if (!s) { s = { rx: 0, ry: 0, trx: 0, tRy: 0, s: 1, ts: 1 }; tilts.set(card, s); }
+  return s;
+}
+function tiltLoop() {
+  let active = false;
+  el.grid.querySelectorAll(".card").forEach(card => {
+    const s = tilts.get(card);
+    if (!s) return;
+    if (Math.abs(s.trx - s.rx) < .01 && Math.abs(s.tRy - s.ry) < .01 && Math.abs(s.ts - s.s) < .0005) return;
+    s.rx += (s.trx - s.rx) * .09;
+    s.ry += (s.tRy - s.ry) * .09;
+    s.s += (s.ts - s.s) * .12;
+    card.style.transform = "rotateX(" + s.rx.toFixed(2) + "deg) rotateY(" + s.ry.toFixed(2) + "deg) scale(" + s.s.toFixed(4) + ")";
+    active = true;
+  });
+  rafTilt = active ? requestAnimationFrame(tiltLoop) : 0;
+}
+function kickTilt() { if (!rafTilt) rafTilt = requestAnimationFrame(tiltLoop); }
+
+el.grid.addEventListener("pointermove", e => {
+  if (reduce) return;
+  const card = e.target.closest(".card");
+  if (!card) return;
+  const r = card.getBoundingClientRect();
+  const px = (e.clientX - r.left) / r.width;
+  const py = (e.clientY - r.top) / r.height;
+  const s = tiltOf(card);
+  s.tRy = (px - .5) * MAX_TY * 2;
+  s.trx = (.5 - py) * MAX_TX * 2;
+  s.ts = 1.012;
+  card.style.setProperty("--mx", (px * 100).toFixed(2) + "%");
+  card.style.setProperty("--my", (py * 100).toFixed(2) + "%");
+  kickTilt();
+});
+el.grid.addEventListener("pointerout", e => {
+  if (reduce) return;
+  const card = e.target.closest(".card");
+  if (!card || card.contains(e.relatedTarget)) return;
+  const s = tiltOf(card);
+  s.trx = 0; s.tRy = 0; s.ts = 1;
+  card.style.setProperty("--mx", "50%");
+  card.style.setProperty("--my", "40%");
+  kickTilt();
+});
+
+const canvas = document.getElementById("field");
+const ctx = canvas.getContext("2d");
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+let W, H, dots = [], mouse = { x: -999, y: -999 };
+const DPR = Math.min(devicePixelRatio || 1, 2);
+
+function resize() {
+  W = canvas.width = innerWidth * DPR;
+  H = canvas.height = innerHeight * DPR;
+  canvas.style.width = innerWidth + "px";
+  canvas.style.height = innerHeight + "px";
+  const n = Math.round(Math.min(80, (innerWidth * innerHeight) / 26000));
+  dots = Array.from({ length: n }, () => ({
+    x: Math.random() * W, y: Math.random() * H,
+    vx: (Math.random() - .5) * .18 * DPR, vy: (Math.random() - .5) * .18 * DPR,
+    r: (Math.random() * 1.4 + .6) * DPR
+  }));
+}
+resize();
+addEventListener("resize", resize);
+addEventListener("pointermove", e => { mouse.x = e.clientX * DPR; mouse.y = e.clientY * DPR; });
+
+function frame() {
+  ctx.clearRect(0, 0, W, H);
+  const link = 120 * DPR;
+  for (let i = 0; i < dots.length; i++) {
+    const p = dots[i];
+    p.x += p.vx; p.y += p.vy;
+    if (p.x < 0 || p.x > W) p.vx *= -1;
+    if (p.y < 0 || p.y > H) p.vy *= -1;
+    const dx = p.x - mouse.x, dy = p.y - mouse.y, d = Math.hypot(dx, dy);
+    if (d < 140 * DPR) { p.x += (dx / d) * .5; p.y += (dy / d) * .5; }
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(31,107,74,.22)"; ctx.fill();
+    for (let j = i + 1; j < dots.length; j++) {
+      const q = dots[j], dd = Math.hypot(p.x - q.x, p.y - q.y);
+      if (dd < link) {
+        ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y);
+        ctx.strokeStyle = "rgba(31,107,74," + (0.13 * (1 - dd / link)).toFixed(3) + ")";
+        ctx.lineWidth = .6 * DPR; ctx.stroke();
+      }
+    }
+  }
+  requestAnimationFrame(frame);
+}
+if (!reduce) frame();
+</script>
+</body>
+</html>

@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FDELab · 人才身份卡（3D 粒子原型）</title>
+<style>
+  :root {
+    --ink: #17241e;
+    --muted: #5e6a63;
+    --paper: #f4f1ea;
+    --card: #fffdf8;
+    --line: #e3dccf;
+    --accent: #1f6b4a;
+    --gold: #c4a574;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Avenir Next", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", sans-serif;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+  #field { position: fixed; inset: 0; width: 100%; height: 100%; }
+  .stage {
+    position: relative;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 34px;
+    padding: 4vh 6vw;
+  }
+  .brandline {
+    position: fixed;
+    top: 26px; left: 7vw; right: 7vw;
+    display: flex; align-items: baseline; justify-content: space-between;
+    font-size: 13px; color: var(--muted); letter-spacing: 0.08em;
+  }
+  .brandline strong {
+    font-family: "Iowan Old Style", Palatino, "Songti SC", serif;
+    font-size: 19px; font-weight: 400; color: var(--ink); letter-spacing: 0.06em;
+  }
+  .scene { perspective: 1200px; width: min(460px, 84vw); }
+  .card {
+    position: relative;
+    transform-style: preserve-3d;
+    will-change: transform;
+    background-color: #fffdf8;
+    background-image:
+      radial-gradient(ellipse 54% 44% at 24% 16%, rgba(31,107,74,.10), transparent 62%),
+      radial-gradient(ellipse 50% 42% at 84% 82%, rgba(196,165,116,.20), transparent 62%),
+      linear-gradient(160deg, #fffdf8 0%, #fbf7ee 46%, #f8f3e8 100%);
+    border-radius: 22px;
+    padding: 30px 30px 26px;
+    box-shadow:
+      0 0 0 1px rgba(227,220,207,.72),
+      0 34px 68px -32px rgba(23,36,30,.42),
+      0 12px 26px -14px rgba(23,36,30,.18),
+      0 1px 0 rgba(255,255,255,.95) inset;
+  }
+  .card::before {
+    content: "";
+    position: absolute; inset: 0;
+    border-radius: inherit;
+    z-index: 0;
+    pointer-events: none;
+    background-image:
+      linear-gradient(rgba(31,107,74,.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(31,107,74,.06) 1px, transparent 1px);
+    background-size: 26px 26px;
+    background-position: center;
+    -webkit-mask-image: radial-gradient(ellipse 78% 68% at 50% 44%, #000 16%, transparent 76%);
+    mask-image: radial-gradient(ellipse 78% 68% at 50% 44%, #000 16%, transparent 76%);
+  }
+  .shine {
+    position: absolute; inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    transform: translateZ(72px) scale(.92);
+    background: radial-gradient(circle 200px at var(--mx, 50%) var(--my, 42%),
+      rgba(255,255,255,.85) 0%, rgba(196,165,116,.70) 22%, transparent 60%);
+    mix-blend-mode: soft-light;
+    opacity: 0;
+    transition: opacity .45s ease;
+  }
+  .card:hover .shine { opacity: .95; }
+  .card-head {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    transform: translateZ(38px);
+  }
+  .mark {
+    font-family: "Iowan Old Style", Palatino, "Songti SC", serif;
+    font-size: 13px; letter-spacing: .22em; color: var(--gold);
+  }
+  .idx { font-size: 12px; color: var(--muted); letter-spacing: .16em; }
+  .name {
+    margin: 22px 0 6px;
+    font-size: 30px; font-weight: 500; letter-spacing: .04em;
+    transform: translateZ(56px);
+  }
+  .role { font-size: 14px; color: var(--accent); transform: translateZ(46px); }
+  .tags { display: flex; flex-wrap: wrap; gap: 8px; margin: 20px 0 0; transform: translateZ(30px); }
+  .tag {
+    font-size: 12px; color: var(--muted);
+    border: 1px solid var(--line); border-radius: 999px;
+    padding: 5px 11px; background: rgba(255,255,255,.5);
+  }
+  .metrics {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 1px; margin-top: 24px;
+    border-top: 1px solid var(--line); padding-top: 18px;
+    transform: translateZ(24px);
+  }
+  .metric .k { font-size: 11px; color: var(--muted); letter-spacing: .06em; }
+  .metric .v {
+    font-family: "Iowan Old Style", Palatino, "Songti SC", serif;
+    font-size: 24px; line-height: 1.2; margin-top: 4px;
+  }
+  .metric .v small { font-size: 12px; font-family: inherit; color: var(--muted); margin-left: 3px; }
+  .casebar {
+    margin-top: 20px; padding-top: 16px; border-top: 1px dashed var(--line);
+    font-size: 12.5px; color: var(--muted); line-height: 1.6;
+    transform: translateZ(18px);
+  }
+  .casebar b { color: var(--ink); font-weight: 500; }
+  .foot {
+    position: fixed; bottom: 26px; left: 0; right: 0;
+    display: flex; align-items: center; justify-content: center; gap: 16px;
+  }
+  .dots { display: flex; gap: 8px; }
+  .dot {
+    width: 6px; height: 6px; border-radius: 50%; background: var(--line);
+    border: 0; padding: 0; cursor: pointer; transition: all .25s;
+  }
+  .dot.on { background: var(--accent); width: 18px; border-radius: 3px; }
+  .hint { font-size: 12px; color: var(--muted); letter-spacing: .05em; }
+  .nav {
+    position: fixed; top: 50%; width: 44px; height: 44px; border-radius: 50%;
+    border: 1px solid var(--line); background: rgba(255,253,248,.75);
+    color: var(--muted); font-size: 16px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transform: translateY(-50%); backdrop-filter: blur(6px);
+  }
+  .nav:hover { color: var(--accent); border-color: var(--accent); }
+  .nav.prev { left: max(3vw, 18px); }
+  .nav.next { right: max(3vw, 18px); }
+  @media (max-width: 640px) {
+    .brandline { font-size: 11px; }
+    .name { font-size: 25px; }
+    .nav { width: 36px; height: 36px; }
+  }
+</style>
+</head>
+<body>
+<canvas id="field"></canvas>
+
+<div class="brandline">
+  <strong>FDELab</strong>
+  <span>人才身份卡 · 3D 粒子原型</span>
+</div>
+
+<div class="stage">
+  <div class="scene">
+    <article class="card" id="card">
+      <div class="shine" aria-hidden="true"></div>
+      <div class="card-head">
+        <div class="mark">FDE · IDENTITY</div>
+        <div class="idx" id="idx">01 / 03</div>
+      </div>
+      <h1 class="name" id="name">蒋利文</h1>
+      <div class="role" id="role">企业数智化转型导师 · FDE 智研社主理人</div>
+      <div class="tags" id="tags"></div>
+      <div class="metrics">
+        <div class="metric"><div class="k">交付案例</div><div class="v" id="m1">0<small>个</small></div></div>
+        <div class="metric"><div class="k">覆盖行业</div><div class="v" id="m2">0<small>个</small></div></div>
+        <div class="metric"><div class="k">常驻</div><div class="v" id="m3" style="font-size:18px">—</div></div>
+      </div>
+      <div class="casebar" id="casebar"></div>
+    </article>
+  </div>
+</div>
+
+<button class="nav prev" id="prev" aria-label="上一位">‹</button>
+<button class="nav next" id="next" aria-label="下一位">›</button>
+
+<div class="foot">
+  <div class="dots" id="dots"></div>
+  <span class="hint">移动鼠标倾斜卡片 · 左右切换</span>
+</div>
+
+<script>
+const people = [
+  {
+    name: "蒋利文",
+    role: "企业数智化转型导师 · FDE 智研社主理人",
+    tags: ["离散制造", "公用事业", "跨境企业服务", "CTO / CIO 出身"],
+    cases: 4,
+    industries: 3,
+    city: "深圳",
+    latest: "精密传感器制造企业的数字化与 AI 路线抉择",
+    money: "100–200 万区间分期"
+  },
+  {
+    name: "周衡",
+    role: "制造现场 AI 交付工程师",
+    tags: ["离散制造", "质检闭环", "车间报工"],
+    cases: 2,
+    industries: 1,
+    city: "苏州",
+    latest: "注塑车间的首件确认数字化",
+    money: "两周试点，未披露金额"
+  },
+  {
+    name: "陈曦",
+    role: "跨境电商 AI 选品顾问",
+    tags: ["跨境电商", "选品与快反", "柔性供应链"],
+    cases: 3,
+    industries: 2,
+    city: "杭州",
+    latest: "跨境女装卖家的 AI 选款与追单节奏",
+    money: "按 GMV 分成"
+  }
+];
+
+const el = {
+  card: document.getElementById("card"),
+  idx: document.getElementById("idx"),
+  name: document.getElementById("name"),
+  role: document.getElementById("role"),
+  tags: document.getElementById("tags"),
+  m1: document.getElementById("m1"),
+  m2: document.getElementById("m2"),
+  m3: document.getElementById("m3"),
+  casebar: document.getElementById("casebar"),
+  dots: document.getElementById("dots")
+};
+let current = 0;
+
+function render(i) {
+  const p = people[i];
+  el.idx.textContent = String(i + 1).padStart(2, "0") + " / " + String(people.length).padStart(2, "0");
+  el.name.textContent = p.name;
+  el.role.textContent = p.role;
+  el.tags.innerHTML = p.tags.map(t => '<span class="tag">' + t + "</span>").join("");
+  countTo(el.m1, p.cases, "个");
+  countTo(el.m2, p.industries, "个");
+  el.m3.textContent = p.city;
+  el.casebar.innerHTML = "代表案例 · <b>" + p.latest + "</b><br>投入口径 · " + p.money + "　<a href=\"#\" style=\"color:var(--accent)\">查看案例 →</a>";
+  [...el.dots.children].forEach((d, k) => d.classList.toggle("on", k === i));
+}
+
+function countTo(node, target, unit) {
+  const start = performance.now();
+  const from = 0, dur = 520;
+  function tick(t) {
+    const k = Math.min(1, (t - start) / dur);
+    const v = Math.round(from + (target - from) * (1 - Math.pow(1 - k, 3)));
+    node.innerHTML = v + "<small>" + unit + "</small>";
+    if (k < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+people.forEach((_, i) => {
+  const b = document.createElement("button");
+  b.className = "dot" + (i === 0 ? " on" : "");
+  b.setAttribute("aria-label", "第 " + (i + 1) + " 位");
+  b.onclick = () => { current = i; render(i); };
+  el.dots.appendChild(b);
+});
+
+document.getElementById("prev").onclick = () => { current = (current - 1 + people.length) % people.length; render(current); };
+document.getElementById("next").onclick = () => { current = (current + 1) % people.length; render(current); };
+document.addEventListener("keydown", e => {
+  if (e.key === "ArrowLeft") document.getElementById("prev").click();
+  if (e.key === "ArrowRight") document.getElementById("next").click();
+});
+
+const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const scene = document.querySelector(".scene");
+const tilt = { rx: 0, ry: 0, trx: 0, tRy: 0, s: 1, ts: 1 };
+let rafTilt = 0;
+const MAX_Y = 14, MAX_X = 12;
+
+function applyTilt() {
+  el.card.style.transform =
+    "rotateX(" + tilt.rx.toFixed(3) + "deg) rotateY(" + tilt.ry.toFixed(3) + "deg) scale(" + tilt.s.toFixed(4) + ")";
+}
+
+function tiltLoop() {
+  tilt.rx += (tilt.trx - tilt.rx) * 0.08;
+  tilt.ry += (tilt.tRy - tilt.ry) * 0.08;
+  tilt.s += (tilt.ts - tilt.s) * 0.12;
+  applyTilt();
+  const settled =
+    Math.abs(tilt.trx - tilt.rx) < 0.01 &&
+    Math.abs(tilt.tRy - tilt.ry) < 0.01 &&
+    Math.abs(tilt.ts - tilt.s) < 0.0005;
+  if (settled) { rafTilt = 0; return; }
+  rafTilt = requestAnimationFrame(tiltLoop);
+}
+function startTilt() {
+  if (!rafTilt && !reduce) rafTilt = requestAnimationFrame(tiltLoop);
+}
+
+scene.addEventListener("pointermove", e => {
+  if (reduce) return;
+  const r = scene.getBoundingClientRect();
+  const px = (e.clientX - r.left) / r.width;
+  const py = (e.clientY - r.top) / r.height;
+  tilt.tRy = (px - .5) * MAX_Y * 2;
+  tilt.trx = (.5 - py) * MAX_X * 2;
+  tilt.ts = 1.02;
+  el.card.style.setProperty("--mx", (px * 100).toFixed(2) + "%");
+  el.card.style.setProperty("--my", (py * 100).toFixed(2) + "%");
+  startTilt();
+});
+scene.addEventListener("pointerleave", () => {
+  tilt.trx = 0; tilt.tRy = 0; tilt.ts = 1;
+  el.card.style.setProperty("--mx", "50%");
+  el.card.style.setProperty("--my", "42%");
+  startTilt();
+});
+
+const canvas = document.getElementById("field");
+const ctx = canvas.getContext("2d");
+let W, H, dots = [], mouse = { x: -999, y: -999 };
+const DPR = Math.min(window.devicePixelRatio || 1, 2);
+
+function resize() {
+  W = canvas.width = innerWidth * DPR;
+  H = canvas.height = innerHeight * DPR;
+  canvas.style.width = innerWidth + "px";
+  canvas.style.height = innerHeight + "px";
+  const count = Math.round(Math.min(110, (innerWidth * innerHeight) / 16000));
+  dots = Array.from({ length: count }, () => ({
+    x: Math.random() * W,
+    y: Math.random() * H,
+    vx: (Math.random() - .5) * .22 * DPR,
+    vy: (Math.random() - .5) * .22 * DPR,
+    r: (Math.random() * 1.5 + .6) * DPR
+  }));
+}
+resize();
+addEventListener("resize", resize);
+addEventListener("pointermove", e => { mouse.x = e.clientX * DPR; mouse.y = e.clientY * DPR; });
+
+function frame() {
+  ctx.clearRect(0, 0, W, H);
+  const link = 118 * DPR;
+  for (let i = 0; i < dots.length; i++) {
+    const p = dots[i];
+    p.x += p.vx; p.y += p.vy;
+    if (p.x < 0 || p.x > W) p.vx *= -1;
+    if (p.y < 0 || p.y > H) p.vy *= -1;
+
+    const dxm = p.x - mouse.x, dym = p.y - mouse.y;
+    const dm = Math.hypot(dxm, dym);
+    if (dm < 150 * DPR) {
+      p.x += (dxm / dm) * .6;
+      p.y += (dym / dm) * .6;
+    }
+
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(31,107,74,.30)";
+    ctx.fill();
+
+    for (let j = i + 1; j < dots.length; j++) {
+      const q = dots[j];
+      const d = Math.hypot(p.x - q.x, p.y - q.y);
+      if (d < link) {
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(q.x, q.y);
+        ctx.strokeStyle = "rgba(31,107,74," + (0.16 * (1 - d / link)).toFixed(3) + ")";
+        ctx.lineWidth = .6 * DPR;
+        ctx.stroke();
+      }
+    }
+  }
+  requestAnimationFrame(frame);
+}
+
+render(0);
+if (!reduce) frame();
+</script>
+</body>
+</html>
