@@ -1,248 +1,243 @@
 <template>
-  <canvas ref="fieldCanvas" class="field" aria-hidden="true"></canvas>
+  <div class="talent-page">
+    <canvas ref="fieldCanvas" class="field" aria-hidden="true"></canvas>
 
-  <div class="wrap">
-    <div class="topbar">
-      <router-link class="brandmark" to="/">FDELab</router-link>
-      <span class="breadcrumb">人才 · 名录</span>
-    </div>
-
-    <header class="head">
-      <p class="kicker">FDELAB · TALENT</p>
-      <h1>人才</h1>
-      <p class="lead">每位 FDE 有自己的子域名主页，卡上的数字都能追溯到案例库。没有案例的人，我们诚实留白。</p>
-      <div class="stats">
-        <span><b>{{ stats.people }}</b>位 FDE</span><span class="sep"></span>
-        <span><b>{{ stats.industries }}</b>个行业</span><span class="sep"></span>
-        <span><b>{{ stats.cases }}</b>个交付案例</span>
-      </div>
-    </header>
-
-    <div ref="toolbarRef" class="toolbar">
-      <div class="tabs" role="tablist">
-        <button
-          v-for="opt in industryTabs"
-          :key="opt.value ?? 'all'"
-          class="tab"
-          :class="{ on: filterIndustry === opt.value }"
-          type="button"
-          role="tab"
-          :aria-selected="filterIndustry === opt.value"
-          @click="selectIndustry(opt.value)"
-        >{{ opt.label }}</button>
+    <div class="wrap">
+      <div class="topbar">
+        <router-link class="brandmark" to="/">FDELab</router-link>
+        <span class="breadcrumb">人才 · 名录</span>
       </div>
 
-      <div class="right">
-        <div class="pick" :class="{ open: openPicker === 'domain', picked: !!filterDomain }">
+      <header class="head">
+        <p class="kicker">FDELAB · TALENT</p>
+        <h1>人才</h1>
+        <p class="lead">每位 FDE 有自己的子域名主页，卡上的数字都能追溯到案例库。没有案例的人，我们诚实留白。</p>
+        <div class="stats">
+          <span><b>{{ stats.people }}</b>位 FDE</span><span class="sep"></span>
+          <span><b>{{ stats.industries }}</b>个行业</span><span class="sep"></span>
+          <span><b>{{ stats.cases }}</b>个交付案例</span>
+        </div>
+      </header>
+
+      <div ref="toolbarRef" class="toolbar">
+        <div class="tabs" role="tablist">
           <button
-            class="pick-btn"
+            v-for="opt in industryTabs"
+            :key="opt.value ?? 'all'"
+            class="tab"
+            :class="{ on: filterIndustry === opt.value }"
             type="button"
-            aria-haspopup="listbox"
-            :aria-expanded="openPicker === 'domain'"
-            @click.stop="togglePicker('domain')"
-          >
-            <span class="pick-label">{{ domainLabel }}</span><i class="chev" aria-hidden="true"></i>
-          </button>
-          <div class="pick-panel" role="listbox" aria-label="能力域">
-            <button
-              v-for="opt in domainTabs"
-              :key="opt.value ?? 'all'"
-              class="pick-item"
-              :class="{ on: filterDomain === opt.value }"
-              type="button"
-              role="option"
-              :aria-selected="filterDomain === opt.value"
-              @click="selectDomain(opt.value)"
-            ><i class="tick"></i><span>{{ opt.label }}</span></button>
-          </div>
+            role="tab"
+            :aria-selected="filterIndustry === opt.value"
+            @click="selectIndustry(opt.value)"
+          >{{ opt.label }}</button>
         </div>
 
-        <div class="pick" :class="{ open: openPicker === 'sort' }">
+        <div class="right">
+          <div class="pick" :class="{ open: openPicker === 'domain', picked: !!filterDomain }">
+            <button
+              class="pick-btn"
+              type="button"
+              aria-haspopup="listbox"
+              :aria-expanded="openPicker === 'domain'"
+              @click.stop="togglePicker('domain')"
+            >
+              <span class="pick-label">{{ domainLabel }}</span><i class="chev" aria-hidden="true"></i>
+            </button>
+            <div class="pick-panel" role="listbox" aria-label="能力域">
+              <button
+                v-for="opt in domainTabs"
+                :key="opt.value ?? 'all'"
+                class="pick-item"
+                :class="{ on: filterDomain === opt.value }"
+                type="button"
+                role="option"
+                :aria-selected="filterDomain === opt.value"
+                @click="selectDomain(opt.value)"
+              ><i class="tick"></i><span>{{ opt.label }}</span></button>
+            </div>
+          </div>
+
+          <div class="pick" :class="{ open: openPicker === 'sort' }">
+            <button
+              class="pick-btn"
+              type="button"
+              aria-haspopup="listbox"
+              :aria-expanded="openPicker === 'sort'"
+              @click.stop="togglePicker('sort')"
+            >
+              <span class="pick-label">{{ sortLabel }}</span><i class="chev" aria-hidden="true"></i>
+            </button>
+            <div class="pick-panel" role="listbox" aria-label="排序">
+              <button
+                v-for="opt in sortOptions"
+                :key="opt.value"
+                class="pick-item"
+                :class="{ on: sortKey === opt.value }"
+                type="button"
+                role="option"
+                :aria-selected="sortKey === opt.value"
+                @click="selectSort(opt.value)"
+              ><i class="tick"></i><span>{{ opt.label }}</span></button>
+            </div>
+          </div>
+
+          <input v-model="searchInput" class="search" type="search" placeholder="搜名字或能力…" @input="onSearchInput" />
+
+          <span class="viewtoggle">
+            <span class="vsep"></span>
+            <button class="vbtn" :class="{ on: viewMode === 'card' }" type="button" @click="setView('card')">卡片</button>
+            <button class="vbtn" :class="{ on: viewMode === 'list' }" type="button" @click="setView('list')">列表</button>
+          </span>
+
+          <span class="count">{{ total }} / {{ people.length }} 位</span>
+        </div>
+      </div>
+
+      <p v-if="notice" class="notice">{{ notice }}</p>
+
+      <div v-show="viewMode === 'card'" ref="gridRef" class="grid">
+        <article
+          v-for="(person, index) in pageSlice"
+          :key="person.id"
+          class="card"
+          @click="openCard(person, $event)"
+        >
+          <div class="shine" aria-hidden="true"></div>
+          <div class="edge" aria-hidden="true"></div>
+          <div class="card-top">
+            <div class="brandline" aria-hidden="true"><i>FDE</i><b>FDELAB</b></div>
+            <span class="pill-ghost">FDE · {{ person.city }}</span>
+          </div>
+          <div class="cmain">
+            <h2 class="name">{{ person.name }}</h2>
+            <div class="role">{{ person.role }}</div>
+            <p class="cdesc">{{ roleLine(person) }}</p>
+          </div>
+          <div class="cstats">
+            <div><b>{{ person.cases.length }}</b><span>案例</span></div>
+            <div><b>{{ person.industries.length }}</b><span>行业</span></div>
+            <div><b>{{ person.likes }}</b><span>点赞</span></div>
+          </div>
+          <div class="cfoot">
+            <div class="tags">
+              <span
+                v-for="(tag, tagIndex) in tagParts(person)"
+                :key="tagIndex"
+                :class="{ dm: tag.domain }"
+              >{{ tag.text }}</span>
+            </div>
+          </div>
+          <div class="cardfoot">
+            <span class="findex">{{ pad2(from + index + 1) }} / {{ pad2(total) }}</span>
+          </div>
+        </article>
+      </div>
+
+      <div v-show="viewMode === 'list'" class="list">
+        <div v-for="person in pageSlice" :key="person.id" class="row" @click="openRow(person, $event)">
+          <span class="rname">{{ person.name }}</span>
+          <span class="rrole">{{ person.role }}</span>
+          <span class="rtags">
+            <template v-for="(tag, index) in tagParts(person)" :key="index">
+              <span v-if="index" class="dotsep">·</span>
+              <span :class="{ dm: tag.domain }">{{ tag.text }}</span>
+            </template>
+          </span>
+          <span class="rcase"><b>{{ person.cases.length }}</b> 例</span>
+          <span v-if="person.cases[0]" class="rrep">{{ person.cases[0].title }}</span>
+          <span v-else class="rrep empty">暂无案例</span>
+          <span class="rgo">→</span>
+        </div>
+      </div>
+
+      <div v-if="total > 0" class="pager">
+        <span class="pmeta">第 {{ from + 1 }}–{{ from + shown }} 位 · 共 {{ total }} 位</span>
+        <div v-if="totalPages > 1" class="pnums">
+          <button class="pnum" type="button" :disabled="page === 1" @click="gotoPage(page - 1)">‹</button>
           <button
-            class="pick-btn"
+            v-for="n in totalPages"
+            :key="n"
+            class="pnum"
+            :class="{ on: n === page }"
             type="button"
-            aria-haspopup="listbox"
-            :aria-expanded="openPicker === 'sort'"
-            @click.stop="togglePicker('sort')"
-          >
-            <span class="pick-label">{{ sortLabel }}</span><i class="chev" aria-hidden="true"></i>
-          </button>
-          <div class="pick-panel" role="listbox" aria-label="排序">
-            <button
-              v-for="opt in sortOptions"
-              :key="opt.value"
-              class="pick-item"
-              :class="{ on: sortKey === opt.value }"
-              type="button"
-              role="option"
-              :aria-selected="sortKey === opt.value"
-              @click="selectSort(opt.value)"
-            ><i class="tick"></i><span>{{ opt.label }}</span></button>
-          </div>
+            @click="gotoPage(n)"
+          >{{ n }}</button>
+          <button class="pnum" type="button" :disabled="page === totalPages" @click="gotoPage(page + 1)">›</button>
         </div>
-
-        <input v-model="searchInput" class="search" type="search" placeholder="搜名字或能力…" @input="onSearchInput" />
-
-        <span class="viewtoggle">
-          <span class="vsep"></span>
-          <button class="vbtn" :class="{ on: viewMode === 'card' }" type="button" @click="setView('card')">卡片</button>
-          <button class="vbtn" :class="{ on: viewMode === 'list' }" type="button" @click="setView('list')">列表</button>
-        </span>
-
-        <span class="count">{{ total }} / {{ people.length }} 位</span>
       </div>
+
+      <div v-if="loading" class="empty-state">正在加载人才…</div>
+      <div v-else-if="loadError" class="empty-state">{{ loadError }}</div>
+      <div v-else-if="total === 0" class="empty-state">没有符合条件的人，换个行业看看。</div>
     </div>
 
-    <p v-if="notice" class="notice">{{ notice }}</p>
+    <div class="minipager" :class="{ show: showMiniPager }">
+      <button type="button" aria-label="上一页" :disabled="page === 1" @click="gotoPage(page - 1)">‹</button>
+      <span class="mnum"><b>{{ page }}</b> / {{ totalPages }}</span>
+      <button type="button" aria-label="下一页" :disabled="page === totalPages" @click="gotoPage(page + 1)">›</button>
+    </div>
 
-    <div
-      v-show="viewMode === 'card'"
-      ref="gridRef"
-      class="grid"
-      :class="{ fill }"
-      :style="{ height: gridHeight }"
-    >
-      <article
-        v-for="person in pageSlice"
-        :key="person.id"
-        class="card"
-        @click="openHomepage(person)"
-      >
-        <div class="shine" aria-hidden="true"></div>
-        <div class="card-top">
-          <span class="mark">FDE · IDENTITY</span>
-          <span class="city">{{ person.city }}</span>
+    <div class="drawer-mask" :class="{ open: drawerOpen }" @click.self="closeDrawer">
+      <div v-if="drawerPerson" class="drawer">
+        <button class="close" type="button" @click="closeDrawer">✕</button>
+        <p class="drawer-kicker">FDE · PROFILE</p>
+        <h2>{{ drawerPerson.name }}</h2>
+        <p class="drole">{{ drawerPerson.role }}　·　{{ drawerPerson.city }}</p>
+        <div class="tags drawer-tags">
+          <span v-for="tag in drawerPerson.industries" :key="'i' + tag" class="tag">{{ tag }}</span>
+          <span v-for="tag in drawerPerson.domains" :key="'d' + tag" class="tag domain">{{ tag }}</span>
         </div>
-        <h2 class="name">{{ person.name }}</h2>
-        <div class="role">{{ person.role }}</div>
-        <div class="meta">
-          <b>{{ person.cases.length }}</b> 个案例<span class="dotsep">·</span><b>{{ person.industries.length }}</b> 个行业<span class="dotsep">·</span><b>{{ person.likes }}</b> 赞
-        </div>
-        <div class="tags">
-          <template v-for="(tag, index) in tagParts(person)" :key="index">
-            <span v-if="index" class="dotsep">·</span>
-            <span :class="{ dm: tag.domain }">{{ tag.text }}</span>
+
+        <section class="dsec">
+          <h3>交付数据</h3>
+          <p><b>{{ drawerPerson.cases.length }} 个案例</b> · 覆盖 {{ drawerPerson.industries.length }} 个行业 · {{ drawerPerson.likes }} 个赞</p>
+        </section>
+
+        <section class="dsec">
+          <h3>主要身份</h3>
+          <template v-if="drawerPerson.roles.length">
+            <p v-for="(item, index) in drawerPerson.roles" :key="index"><b>{{ item.org }}</b> · {{ item.title }}<br />{{ item.description }}</p>
           </template>
-        </div>
-        <div v-if="person.cases[0]" class="case">
-          <div class="clabel">代表案例</div>
-          <div class="ctitle">{{ person.cases[0].title }}</div>
-          <div v-if="caseBudget(person.cases[0])" class="cbudget">{{ caseBudget(person.cases[0]) }}</div>
-        </div>
-        <div v-else class="case empty">暂无案例，档案整理中——不编数据</div>
-        <div class="foot">
-          <button class="btn" type="button" @click.stop="openDrawer(person)">预览档案</button>
-          <a class="btn solid" :href="homepageOf(person)" target="_blank" rel="noopener" @click.stop>进入主页 →</a>
-          <button class="btn like" :class="{ liked: person.liked }" type="button" @click.stop="like(person)">
-            {{ person.liked ? '已赞' : '赞' }}
-          </button>
-        </div>
-      </article>
-    </div>
+          <p v-else>待补充</p>
+        </section>
 
-    <div v-show="viewMode === 'list'" class="list">
-      <div v-for="person in pageSlice" :key="person.id" class="row" @click="openRow(person, $event)">
-        <span class="rname">{{ person.name }}</span>
-        <span class="rrole">{{ person.role }}</span>
-        <span class="rtags">
-          <template v-for="(tag, index) in tagParts(person)" :key="index">
-            <span v-if="index" class="dotsep">·</span>
-            <span :class="{ dm: tag.domain }">{{ tag.text }}</span>
+        <section v-if="drawerPerson.experiences.length" class="dsec">
+          <h3>过往经历</h3>
+          <p v-for="(item, index) in drawerPerson.experiences" :key="index"><b>{{ item.title }}</b><br />{{ item.description }}</p>
+        </section>
+
+        <section v-if="drawerPerson.services.length" class="dsec">
+          <h3>提供的服务</h3>
+          <p v-for="(item, index) in drawerPerson.services" :key="index"><b>0{{ index + 1 }}　{{ item.title }}</b><br />{{ item.description }}</p>
+        </section>
+
+        <section v-if="drawerPerson.collabs.length" class="dsec">
+          <h3>正在寻找的合作</h3>
+          <p v-for="(item, index) in drawerPerson.collabs" :key="index"><b>{{ item.title }}</b><br />{{ item.description }}</p>
+        </section>
+
+        <section class="dsec">
+          <h3>实战案例</h3>
+          <template v-if="drawerPerson.cases.length">
+            <div v-for="(item, index) in drawerPerson.cases" :key="index" class="dcase">
+              <div class="ind">{{ item.industry }}</div>
+              <h4>{{ item.title }}</h4>
+              <p class="dportrait">{{ item.portrait }}</p>
+              <ul>
+                <li v-for="(point, pointIndex) in item.points" :key="pointIndex">{{ point }}</li>
+              </ul>
+              <div v-if="caseMeta(item)" class="meta">{{ caseMeta(item) }}</div>
+              <div v-if="item.pitfall" class="meta pitfall">坑 · {{ item.pitfall }}</div>
+            </div>
           </template>
-        </span>
-        <span class="rcase"><b>{{ person.cases.length }}</b> 例</span>
-        <span v-if="person.cases[0]" class="rrep">{{ person.cases[0].title }}</span>
-        <span v-else class="rrep empty">暂无案例</span>
-        <span class="rgo">→</span>
-      </div>
-    </div>
+          <p v-else class="muted-line">暂无案例。这位的档案还在整理，宁缺不编。</p>
+        </section>
 
-    <div v-if="total > 0" class="pager">
-      <span class="pmeta">第 {{ from + 1 }}–{{ from + shown }} 位 · 共 {{ total }} 位</span>
-      <div v-if="totalPages > 1" class="pnums">
-        <button class="pnum" type="button" :disabled="page === 1" @click="gotoPage(page - 1)">‹</button>
-        <button
-          v-for="n in totalPages"
-          :key="n"
-          class="pnum"
-          :class="{ on: n === page }"
-          type="button"
-          @click="gotoPage(n)"
-        >{{ n }}</button>
-        <button class="pnum" type="button" :disabled="page === totalPages" @click="gotoPage(page + 1)">›</button>
-      </div>
-    </div>
-
-    <div v-if="loading" class="empty-state">正在加载人才…</div>
-    <div v-else-if="loadError" class="empty-state">{{ loadError }}</div>
-    <div v-else-if="total === 0" class="empty-state">没有符合条件的人，换个行业看看。</div>
-  </div>
-
-  <div class="minipager" :class="{ show: showMiniPager }">
-    <button type="button" aria-label="上一页" :disabled="page === 1" @click="gotoPage(page - 1)">‹</button>
-    <span class="mnum"><b>{{ page }}</b> / {{ totalPages }}</span>
-    <button type="button" aria-label="下一页" :disabled="page === totalPages" @click="gotoPage(page + 1)">›</button>
-  </div>
-
-  <div class="drawer-mask" :class="{ open: drawerOpen }" @click.self="closeDrawer">
-    <div v-if="drawerPerson" class="drawer">
-      <button class="close" type="button" @click="closeDrawer">✕</button>
-      <p class="drawer-kicker">FDE · PROFILE</p>
-      <h2>{{ drawerPerson.name }}</h2>
-      <p class="drole">{{ drawerPerson.role }}　·　{{ drawerPerson.city }}</p>
-      <div class="tags drawer-tags">
-        <span v-for="tag in drawerPerson.industries" :key="'i' + tag" class="tag">{{ tag }}</span>
-        <span v-for="tag in drawerPerson.domains" :key="'d' + tag" class="tag domain">{{ tag }}</span>
-      </div>
-
-      <section class="dsec">
-        <h3>交付数据</h3>
-        <p><b>{{ drawerPerson.cases.length }} 个案例</b> · 覆盖 {{ drawerPerson.industries.length }} 个行业 · {{ drawerPerson.likes }} 个赞</p>
-      </section>
-
-      <section class="dsec">
-        <h3>主要身份</h3>
-        <template v-if="drawerPerson.roles.length">
-          <p v-for="(item, index) in drawerPerson.roles" :key="index"><b>{{ item.org }}</b> · {{ item.title }}<br />{{ item.description }}</p>
-        </template>
-        <p v-else>待补充</p>
-      </section>
-
-      <section v-if="drawerPerson.experiences.length" class="dsec">
-        <h3>过往经历</h3>
-        <p v-for="(item, index) in drawerPerson.experiences" :key="index"><b>{{ item.title }}</b><br />{{ item.description }}</p>
-      </section>
-
-      <section v-if="drawerPerson.services.length" class="dsec">
-        <h3>提供的服务</h3>
-        <p v-for="(item, index) in drawerPerson.services" :key="index"><b>0{{ index + 1 }}　{{ item.title }}</b><br />{{ item.description }}</p>
-      </section>
-
-      <section v-if="drawerPerson.collabs.length" class="dsec">
-        <h3>正在寻找的合作</h3>
-        <p v-for="(item, index) in drawerPerson.collabs" :key="index"><b>{{ item.title }}</b><br />{{ item.description }}</p>
-      </section>
-
-      <section class="dsec">
-        <h3>实战案例</h3>
-        <template v-if="drawerPerson.cases.length">
-          <div v-for="(item, index) in drawerPerson.cases" :key="index" class="dcase">
-            <div class="ind">{{ item.industry }}</div>
-            <h4>{{ item.title }}</h4>
-            <p class="dportrait">{{ item.portrait }}</p>
-            <ul>
-              <li v-for="(point, pointIndex) in item.points" :key="pointIndex">{{ point }}</li>
-            </ul>
-            <div v-if="caseMeta(item)" class="meta">{{ caseMeta(item) }}</div>
-            <div v-if="item.pitfall" class="meta pitfall">坑 · {{ item.pitfall }}</div>
-          </div>
-        </template>
-        <p v-else class="muted-line">暂无案例。这位的档案还在整理，宁缺不编。</p>
-      </section>
-
-      <div class="cta">
-        <a class="btn solid" :href="homepageOf(drawerPerson)" target="_blank" rel="noopener">进入完整主页 →</a>
-        <button class="btn" type="button" @click="closeDrawer">关闭</button>
+        <div class="cta">
+          <router-link class="btn solid" :to="homepageOf(drawerPerson)" @click="closeDrawer">进入完整主页 →</router-link>
+          <button class="btn" type="button" @click="closeDrawer">关闭</button>
+        </div>
       </div>
     </div>
   </div>
@@ -250,13 +245,16 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { fetchTalentBySlug, fetchTalents, toggleTalentLike } from '../api/talent'
+import { useRouter } from 'vue-router'
+import { fetchTalentBySlug, fetchTalents } from '../api/talent'
 import { visitorKey } from '../utils/host'
 
 const SORT_OPTIONS = [
   { value: 'likes', label: '按点赞' },
   { value: 'cases', label: '按案例数' },
 ]
+
+const router = useRouter()
 
 const people = ref([])
 const loading = ref(true)
@@ -271,9 +269,7 @@ const searchInput = ref('')
 
 const viewMode = ref('card')
 const page = ref(1)
-const pageSize = ref(24)
-const fill = ref(false)
-const gridHeight = ref('')
+const pageSize = ref(12)
 
 const openPicker = ref(null)
 const drawerPerson = ref(null)
@@ -283,12 +279,8 @@ const gridRef = ref(null)
 const toolbarRef = ref(null)
 const fieldCanvas = ref(null)
 
-let protoH = 0
-let fitScheduled = false
-let fitToken = 0
 let drawerToken = 0
 let searchTimer = 0
-let resizeTimer = 0
 let rafTilt = 0
 let rafField = 0
 let cleanupCanvas = null
@@ -419,6 +411,10 @@ watch(totalPages, (pages) => {
   if (page.value > pages) page.value = pages
 })
 
+function pad2(value) {
+  return String(value).padStart(2, '0')
+}
+
 function caseBudget(item) {
   return [item?.budget, item?.duration].filter(Boolean).join(' · ')
 }
@@ -429,6 +425,13 @@ function caseMeta(item) {
   if (item?.duration) parts.push(`周期 ${item.duration}`)
   if (item?.delivery) parts.push(`交付 ${item.delivery}`)
   return parts.join(' · ')
+}
+
+function roleLine(person) {
+  const first = person?.roles?.[0]
+  if (!first) return person?.role || ''
+  if (Array.isArray(first)) return first.filter(Boolean).join(' · ') || person.role
+  return [first.org, first.title, first.description].filter(Boolean).join(' · ') || person.role
 }
 
 function tagParts(person) {
@@ -442,9 +445,17 @@ function homepageOf(person) {
   return person?.slug ? `/t/${person.slug}` : '/'
 }
 
-function openHomepage(person) {
+function openDetail(person) {
   if (!person?.slug) return
-  window.open(homepageOf(person), '_blank', 'noopener')
+  router.push(homepageOf(person))
+}
+
+function openCard(person, event) {
+  if (event?.shiftKey) {
+    openDrawer(person)
+    return
+  }
+  openDetail(person)
 }
 
 function openRow(person, event) {
@@ -452,7 +463,7 @@ function openRow(person, event) {
     openDrawer(person)
     return
   }
-  openHomepage(person)
+  openDetail(person)
 }
 
 function togglePicker(name) {
@@ -462,34 +473,24 @@ function togglePicker(name) {
 function selectIndustry(value) {
   filterIndustry.value = value
   page.value = 1
-  scheduleFit()
 }
 
 function selectDomain(value) {
   filterDomain.value = value || null
   openPicker.value = null
   page.value = 1
-  scheduleFit()
 }
 
 function selectSort(value) {
   sortKey.value = value
   openPicker.value = null
   page.value = 1
-  scheduleFit()
 }
 
 function setView(mode) {
   if (viewMode.value === mode) return
   viewMode.value = mode
   page.value = 1
-  if (mode === 'list') {
-    pageSize.value = 24
-    fill.value = false
-    gridHeight.value = ''
-  } else {
-    scheduleFit()
-  }
 }
 
 function onSearchInput() {
@@ -497,7 +498,6 @@ function onSearchInput() {
   searchTimer = setTimeout(() => {
     keyword.value = searchInput.value
     page.value = 1
-    scheduleFit()
   }, 140)
 }
 
@@ -505,76 +505,9 @@ function gotoPage(next) {
   const target = Math.min(Math.max(1, next), totalPages.value)
   if (target === page.value) return
   page.value = target
-  scheduleFit()
   const toolbar = toolbarRef.value
   const top = target === 1 || !toolbar ? 0 : toolbar.getBoundingClientRect().top + window.scrollY - 6
   window.scrollTo({ top: Math.max(0, top), behavior: reduce ? 'auto' : 'smooth' })
-}
-
-function scheduleFit() {
-  if (fitScheduled) return
-  fitScheduled = true
-  nextTick(async () => {
-    fitScheduled = false
-    await fitGridToViewport()
-  })
-}
-
-async function fitGridToViewport() {
-  const grid = gridRef.value
-  if (viewMode.value !== 'card' || !grid) {
-    fill.value = false
-    gridHeight.value = ''
-    return
-  }
-
-  const token = ++fitToken
-  let cards = grid.querySelectorAll('.card')
-  if (!cards.length) {
-    fill.value = false
-    gridHeight.value = ''
-    return
-  }
-
-  const cols = getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length || 1
-  const gap = parseFloat(getComputedStyle(grid).rowGap) || 30
-
-  if (!protoH) {
-    fill.value = false
-    gridHeight.value = ''
-    await nextTick()
-    if (token !== fitToken) return
-    cards = grid.querySelectorAll('.card')
-    let max = 0
-    cards.forEach((card) => {
-      max = Math.max(max, card.offsetHeight)
-    })
-    protoH = max
-  }
-
-  const toolbar = toolbarRef.value
-  const toolH = toolbar ? toolbar.offsetHeight : 64
-  const avail = window.innerHeight - toolH - 56
-  const rows = Math.max(2, Math.floor((avail + gap) / (protoH + gap)))
-  const nextSize = cols * rows
-
-  if (nextSize !== pageSize.value) {
-    fill.value = false
-    gridHeight.value = ''
-    pageSize.value = nextSize
-    const pages = Math.max(1, Math.ceil(total.value / nextSize))
-    if (page.value > pages) page.value = pages
-    await nextTick()
-    if (token !== fitToken) return
-  }
-
-  if (total.value >= cols * 2) {
-    gridHeight.value = `${Math.max(avail, rows * protoH + (rows - 1) * gap)}px`
-    fill.value = true
-  } else {
-    gridHeight.value = ''
-    fill.value = false
-  }
 }
 
 async function openDrawer(person) {
@@ -600,20 +533,13 @@ function closeDrawer() {
   drawerToken += 1
 }
 
-async function like(person) {
-  try {
-    const result = await toggleTalentLike(person.id, visitorKey())
-    person.liked = result.liked
-    person.likes = result.likeCount
-    notice.value = ''
-  } catch (error) {
-    notice.value = error.message || '点赞失败'
-  }
-}
-
 const tilts = new WeakMap()
-const MAX_TY = 9
-const MAX_TX = 7
+const MAX_TY = 16
+const MAX_TX = 12
+
+function canTilt() {
+  return !reduce && !window.matchMedia('(max-width: 768px)').matches
+}
 
 function tiltState(card) {
   let state = tilts.get(card)
@@ -649,7 +575,7 @@ function kickTilt() {
 }
 
 function onGridPointerMove(event) {
-  if (reduce) return
+  if (!canTilt()) return
   const card = event.target.closest('.card')
   if (!card || !gridRef.value?.contains(card)) return
   const rect = card.getBoundingClientRect()
@@ -658,14 +584,14 @@ function onGridPointerMove(event) {
   const state = tiltState(card)
   state.tRy = (px - 0.5) * MAX_TY * 2
   state.trx = (0.5 - py) * MAX_TX * 2
-  state.ts = 1.012
+  state.ts = 1.025
   card.style.setProperty('--mx', `${(px * 100).toFixed(2)}%`)
   card.style.setProperty('--my', `${(py * 100).toFixed(2)}%`)
   kickTilt()
 }
 
 function onGridPointerOut(event) {
-  if (reduce) return
+  if (!canTilt()) return
   const card = event.target.closest('.card')
   if (!card || card.contains(event.relatedTarget)) return
   const state = tiltState(card)
@@ -720,7 +646,7 @@ function setupCanvas() {
       }
       ctx.beginPath()
       ctx.arc(dot.x, dot.y, dot.r, 0, Math.PI * 2)
-      ctx.fillStyle = 'rgba(31,107,74,.22)'
+      ctx.fillStyle = 'rgba(46,107,255,.18)'
       ctx.fill()
       for (let j = i + 1; j < dots.length; j++) {
         const other = dots[j]
@@ -729,7 +655,7 @@ function setupCanvas() {
           ctx.beginPath()
           ctx.moveTo(dot.x, dot.y)
           ctx.lineTo(other.x, other.y)
-          ctx.strokeStyle = `rgba(31,107,74,${(0.13 * (1 - gapDistance / link)).toFixed(3)})`
+          ctx.strokeStyle = `rgba(46,107,255,${(0.11 * (1 - gapDistance / link)).toFixed(3)})`
           ctx.lineWidth = 0.6 * dpr
           ctx.stroke()
         }
@@ -753,14 +679,6 @@ function setupCanvas() {
     window.removeEventListener('resize', resizeCanvas)
     window.removeEventListener('pointermove', onMouseMove)
   }
-}
-
-function onGridResize() {
-  clearTimeout(resizeTimer)
-  resizeTimer = setTimeout(() => {
-    protoH = 0
-    scheduleFit()
-  }, 160)
 }
 
 function onDocumentClick() {
@@ -791,20 +709,16 @@ async function load() {
   try {
     const data = await fetchTalents({ page: 1, size: 100, visitorKey: visitorKey() })
     people.value = (data?.records || []).map(adaptTalent)
-    protoH = 0
   } catch (error) {
     loadError.value = error.message || '人才加载失败'
   } finally {
     loading.value = false
-    await nextTick()
-    scheduleFit()
   }
 }
 
 onMounted(() => {
   document.title = '人才 · FDELab'
   window.addEventListener('keydown', onKeydown)
-  window.addEventListener('resize', onGridResize)
   document.addEventListener('click', onDocumentClick)
   gridRef.value?.addEventListener('pointermove', onGridPointerMove)
   gridRef.value?.addEventListener('pointerout', onGridPointerOut)
@@ -814,19 +728,44 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKeydown)
-  window.removeEventListener('resize', onGridResize)
   document.removeEventListener('click', onDocumentClick)
   gridRef.value?.removeEventListener('pointermove', onGridPointerMove)
   gridRef.value?.removeEventListener('pointerout', onGridPointerOut)
   cancelAnimationFrame(rafTilt)
   cancelAnimationFrame(rafField)
   clearTimeout(searchTimer)
-  clearTimeout(resizeTimer)
   cleanupCanvas?.()
 })
 </script>
 
 <style scoped>
+.talent-page {
+  --ink: #171c2e;
+  --ink-soft: #2a3045;
+  --muted: #66708a;
+  --paper: #f5f7fb;
+  --paper-2: #f5f7fb;
+  --card: #ffffff;
+  --line: #e8ecf4;
+  --accent: #2e6bff;
+  --accent-deep: #1f56d6;
+  --accent-hi: #3b7bff;
+  --gold: #5b8bff;
+  --gold-lit: #5b8bff;
+  --blue-soft: #eef3ff;
+  --blue-line: #dbe3f2;
+  --serif: "Iowan Old Style", Palatino, "Songti SC", serif;
+  position: relative;
+  min-height: 100vh;
+  color: var(--ink);
+  font-family: "Avenir Next", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", sans-serif;
+  background:
+    radial-gradient(ellipse 46% 34% at 18% -4%, #e3ecfc 0%, transparent 62%),
+    radial-gradient(ellipse 42% 30% at 86% 4%, #ece7fc 0%, transparent 60%),
+    var(--paper);
+  -webkit-font-smoothing: antialiased;
+}
+
 .field {
   position: fixed;
   inset: 0;
@@ -839,9 +778,9 @@ onBeforeUnmount(() => {
 .wrap {
   position: relative;
   z-index: 1;
-  max-width: 1320px;
+  max-width: 1680px;
   margin: 0 auto;
-  padding: 34px 6vw 90px;
+  padding: 34px 3.2vw 90px;
 }
 
 .topbar {
@@ -852,9 +791,10 @@ onBeforeUnmount(() => {
 }
 
 .brandmark {
-  font-family: "Iowan Old Style", Palatino, "Songti SC", serif;
+  font-family: var(--serif);
   font-size: 22px;
   letter-spacing: .05em;
+  color: var(--ink);
 }
 
 .breadcrumb {
@@ -875,7 +815,7 @@ onBeforeUnmount(() => {
 }
 
 h1 {
-  font-family: "Iowan Old Style", Palatino, "Songti SC", serif;
+  font-family: var(--serif);
   font-size: 54px;
   font-weight: 500;
   margin: 0;
@@ -930,9 +870,9 @@ h1 {
   margin: 36px 0 28px;
   padding-bottom: 0;
   border-bottom: 1px solid var(--line);
-  background: rgba(244,241,234,.95);
-  -webkit-backdrop-filter: blur(10px) saturate(1.05);
-  backdrop-filter: blur(10px) saturate(1.05);
+  background: rgba(245, 247, 251, .9);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
 }
 
 .tabs {
@@ -1027,10 +967,10 @@ h1 {
   right: 0;
   top: calc(100% + 9px);
   min-width: 208px;
-  background: #fffdf8;
-  border: 1px solid rgba(227,220,207,.9);
+  background: #fff;
+  border: 1px solid var(--line);
   border-radius: 12px;
-  box-shadow: 0 1px 0 rgba(255,255,255,.9) inset, 0 20px 42px -24px rgba(23,36,30,.45);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .9) inset, 0 20px 42px -24px rgba(23, 28, 46, .32);
   padding: 7px;
   z-index: 30;
   display: none;
@@ -1062,7 +1002,7 @@ h1 {
   text-align: left;
   font-family: inherit;
   font-size: 12.5px;
-  color: #4c574f;
+  color: #4a5578;
   padding: 7px 9px 7px 7px;
   border-radius: 7px;
   cursor: pointer;
@@ -1070,7 +1010,7 @@ h1 {
 }
 
 .pick-item:hover {
-  background: rgba(31,107,74,.07);
+  background: rgba(46, 107, 255, .07);
   color: var(--ink);
 }
 
@@ -1105,7 +1045,7 @@ h1 {
 }
 
 .search::placeholder {
-  color: #a8b0aa;
+  color: #a8b2c8;
 }
 
 .search:focus {
@@ -1120,9 +1060,13 @@ h1 {
 }
 
 .notice {
-  margin: -12px 0 18px;
-  color: #8a5a2a;
-  font-size: 12px;
+  margin: 0 0 18px;
+  font-size: 12.5px;
+  color: #c0392b;
+  background: #fef2f2;
+  border: 1px solid #fbdcdc;
+  border-radius: 10px;
+  padding: 10px 14px;
 }
 
 .viewtoggle {
@@ -1170,34 +1114,10 @@ h1 {
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
   gap: 30px 28px;
+  grid-auto-rows: 292px;
   perspective: 1400px;
-}
-
-.grid.fill {
-  grid-auto-rows: 1fr;
-}
-
-.grid.fill .role {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  min-height: 0;
-}
-
-.grid.fill .case .ctitle {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.grid.fill .tags {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .card {
@@ -1205,22 +1125,21 @@ h1 {
   display: flex;
   flex-direction: column;
   height: 100%;
+  padding: 22px 26px 16px;
+  border-radius: 22px;
+  cursor: pointer;
   transform-style: preserve-3d;
   will-change: transform;
-  background-color: #fffdf8;
-  background-image:
-    radial-gradient(ellipse 64% 50% at 18% 8%, rgba(31,107,74,.075), transparent 62%),
-    radial-gradient(ellipse 58% 46% at 90% 92%, rgba(196,165,116,.15), transparent 62%),
-    linear-gradient(168deg, #fffdf8, #fcf8f0);
-  border: 0;
-  border-radius: 12px;
-  padding: 26px 26px 20px;
-  cursor: pointer;
+  background: linear-gradient(145deg, rgba(255, 255, 255, .97) 0%, rgba(244, 248, 255, .95) 48%, rgba(236, 242, 255, .97) 100%);
+  border: 1px solid rgba(46, 107, 255, .18);
   box-shadow:
-    0 1px 2px rgba(23,36,30,.05),
-    0 16px 34px -26px rgba(23,36,30,.30),
-    0 1px 0 rgba(255,255,255,.9) inset;
-  transition: box-shadow .35s ease;
+    0 0 0 1px rgba(255, 255, 255, .85),
+    0 20px 48px rgba(46, 107, 255, .14),
+    0 8px 24px rgba(15, 23, 42, .06),
+    inset 0 1px 0 rgba(255, 255, 255, .95);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  transition: box-shadow .4s cubic-bezier(.2, .8, .2, 1);
 }
 
 .card::before {
@@ -1228,20 +1147,57 @@ h1 {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  z-index: 0;
   pointer-events: none;
+  z-index: 0;
   background-image:
-    linear-gradient(rgba(31,107,74,.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(31,107,74,.045) 1px, transparent 1px);
-  background-size: 24px 24px;
+    linear-gradient(rgba(46, 107, 255, .06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(46, 107, 255, .06) 1px, transparent 1px);
+  background-size: 28px 28px;
   background-position: center;
-  -webkit-mask-image: radial-gradient(ellipse 88% 74% at 50% 36%, #000 10%, transparent 78%);
-  mask-image: radial-gradient(ellipse 88% 74% at 50% 36%, #000 10%, transparent 78%);
+  opacity: .7;
+  -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 45%, #000 20%, transparent 76%);
+  mask-image: radial-gradient(ellipse 80% 70% at 50% 45%, #000 20%, transparent 76%);
+  transform: translateZ(6px);
 }
 
-.card > *:not(.shine) {
+.card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 55% 45% at 30% 25%, rgba(46, 107, 255, .12) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 78% 72%, rgba(109, 144, 255, .12) 0%, transparent 56%);
+  transform: translateZ(14px);
+}
+
+.card > * {
   position: relative;
   z-index: 1;
+}
+
+.card > .shine {
+  z-index: 2;
+}
+
+.card:hover {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, .95),
+    0 28px 64px rgba(46, 107, 255, .24),
+    0 10px 28px rgba(15, 23, 42, .08),
+    inset 0 1px 0 rgba(255, 255, 255, .95);
+}
+
+.card .edge {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  transform: translateZ(3px);
+  border: 1px solid rgba(255, 255, 255, .72);
+  box-shadow: inset 0 0 36px rgba(46, 107, 255, .07);
 }
 
 .card .shine {
@@ -1249,9 +1205,9 @@ h1 {
   inset: 0;
   border-radius: inherit;
   pointer-events: none;
-  transform: translateZ(48px) scale(.95);
+  transform: translateZ(64px) scale(.95);
   background: radial-gradient(circle 150px at var(--mx, 50%) var(--my, 40%),
-    rgba(255,255,255,.85) 0%, rgba(196,165,116,.62) 22%, transparent 62%);
+    rgba(255, 255, 255, .9) 0%, rgba(130, 168, 255, .6) 22%, transparent 62%);
   mix-blend-mode: soft-light;
   opacity: 0;
   transition: opacity .4s ease;
@@ -1261,160 +1217,168 @@ h1 {
   opacity: .9;
 }
 
-.card:hover {
-  box-shadow:
-    0 1px 2px rgba(23,36,30,.06),
-    0 28px 50px -30px rgba(23,36,30,.40),
-    0 1px 0 rgba(255,255,255,.9) inset;
-}
-
 .card-top {
   display: flex;
+  gap: 12px;
+  align-items: center;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: 10px;
   transform: translateZ(18px);
 }
 
-.mark {
-  font-size: 9.5px;
-  letter-spacing: .24em;
-  color: var(--gold);
+.brandline {
+  display: flex;
+  align-items: center;
+  gap: 9px;
 }
 
-.city {
-  font-size: 11px;
-  color: var(--muted);
+.brandline i {
+  font-style: normal;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .03em;
+  color: #fff;
+  background: linear-gradient(145deg, #6d90ff 0%, #2e6bff 100%);
+  border: 1px solid rgba(46, 107, 255, .35);
+  box-shadow: 0 6px 14px rgba(46, 107, 255, .24);
+}
+
+.brandline b {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .18em;
+  color: rgba(71, 85, 105, .85);
+  text-transform: uppercase;
+}
+
+.pill-ghost {
+  font-size: 10.5px;
+  letter-spacing: .16em;
+  color: #5b78c9;
+  border: 1px solid #d9e2f5;
+  border-radius: 999px;
+  padding: 5px 12px;
+  background: rgba(255, 255, 255, .7);
   white-space: nowrap;
-  letter-spacing: .04em;
-}
-
-.name {
   transform: translateZ(26px);
-  font-family: "Iowan Old Style", Palatino, "Songti SC", serif;
-  font-size: 29px;
-  font-weight: 500;
-  margin: 18px 0 6px;
-  letter-spacing: .02em;
-  line-height: 1.15;
 }
 
-.role {
-  transform: translateZ(22px);
-  font-size: 12.5px;
-  color: var(--accent);
-  line-height: 1.55;
-  min-height: 20px;
-}
-
-.meta {
-  transform: translateZ(16px);
+.cmain {
   margin-top: 14px;
-  font-size: 11px;
-  color: var(--muted);
-  letter-spacing: .1em;
+  transform: translateZ(26px);
 }
 
-.meta b {
+.cmain .name {
+  font-family: "Avenir Next", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", sans-serif;
+  font-size: 29px;
+  font-weight: 700;
+  letter-spacing: -.02em;
+  line-height: 1.1;
+  margin: 0 0 4px;
   color: var(--ink);
+}
+
+.cmain .role {
+  font-size: 19px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: linear-gradient(90deg, #4f7cff 0%, #2e6bff 55%, #6d90ff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.cdesc {
+  margin: 8px 0 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: rgba(71, 85, 105, .85);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cstats {
+  display: flex;
+  gap: 30px;
+  align-items: flex-start;
+  margin-top: auto;
+  padding-top: 10px;
+  transform: translateZ(16px);
+}
+
+.cstats b {
+  display: block;
+  font-family: var(--serif);
+  font-size: 23px;
   font-weight: 500;
+  color: var(--ink);
+  line-height: 1;
   font-variant-numeric: tabular-nums;
 }
 
-.tags {
-  transform: translateZ(14px);
-  margin-top: 8px;
-  font-size: 11.5px;
-  color: #6d786f;
-  line-height: 1.7;
+.cstats span {
+  display: block;
+  margin-top: 5px;
+  font-size: 10px;
+  letter-spacing: .08em;
+  color: rgba(100, 116, 139, .78);
 }
 
-.dotsep {
-  color: var(--gold);
-  margin: 0 6px;
-  opacity: .75;
+.cfoot {
+  margin-top: 11px;
+  transform: translateZ(10px);
 }
 
-.tags .dm {
-  color: #8a7a5e;
-}
-
-.case {
-  transform: translateZ(8px);
-  margin-top: 20px;
-  padding-left: 14px;
-  border-left: 2px solid rgba(31,107,74,.3);
-}
-
-.case .clabel {
-  font-size: 9.5px;
-  color: var(--gold);
-  letter-spacing: .2em;
-}
-
-.case .ctitle {
-  font-family: "Iowan Old Style", Palatino, "Songti SC", serif;
-  font-size: 15px;
-  line-height: 1.6;
-  margin-top: 7px;
-  color: var(--ink);
-}
-
-.case .cbudget {
-  font-size: 11.5px;
-  color: var(--muted);
-  margin-top: 7px;
-  letter-spacing: .02em;
-}
-
-.case.empty {
-  border-left-color: rgba(196,165,116,.45);
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.7;
-}
-
-.foot {
-  transform: translateZ(12px);
+.cfoot .tags {
+  margin-top: 0;
   display: flex;
-  gap: 18px;
-  align-items: center;
-  margin-top: auto;
-  padding-top: 24px;
+  flex-wrap: nowrap;
+  overflow: hidden;
+  gap: 7px;
+  -webkit-mask-image: linear-gradient(90deg, #000 80%, transparent 100%);
+  mask-image: linear-gradient(90deg, #000 80%, transparent 100%);
 }
 
-.btn {
-  border: 0;
-  background: none;
-  padding: 0;
-  color: var(--muted);
-  font-size: 12px;
-  cursor: pointer;
-  font-family: inherit;
+.cfoot .tags span,
+.cfoot .tags .dm {
+  display: inline-block;
+  font-size: 10.5px;
   letter-spacing: .02em;
-  transition: color .18s ease;
+  color: #3d5f9e;
+  background: var(--blue-soft);
+  border-radius: 6px;
+  padding: 3.5px 10px;
+  line-height: 1.4;
+  white-space: nowrap;
+  flex: 0 0 auto;
 }
 
-.btn:hover {
-  color: var(--accent);
+.cardfoot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-top: 9px;
+  padding-top: 9px;
+  border-top: 1px solid rgba(46, 107, 255, .1);
+  transform: translateZ(8px);
 }
 
-.btn.solid {
-  color: var(--accent);
-  font-weight: 500;
-}
-
-.btn.solid:hover {
-  background: #1a5b3f;
-  color: #fff;
-}
-
-.foot .like {
-  margin-left: auto;
-}
-
-.foot .like.liked {
-  color: var(--accent);
+.findex {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  color: rgba(71, 85, 105, .75);
+  font-variant-numeric: tabular-nums;
 }
 
 .empty-state {
@@ -1433,11 +1397,11 @@ h1 {
   display: none;
   align-items: center;
   gap: 1px;
-  background: rgba(255,253,248,.94);
+  background: rgba(255, 255, 255, .94);
   border: 1px solid var(--line);
   border-radius: 999px;
   padding: 4px 6px;
-  box-shadow: 0 12px 30px -18px rgba(23,36,30,.45);
+  box-shadow: 0 12px 30px -18px rgba(23, 28, 46, .35);
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
 }
@@ -1462,7 +1426,7 @@ h1 {
 
 .minipager button:hover:not(:disabled) {
   color: var(--ink);
-  background: rgba(31,107,74,.08);
+  background: rgba(46, 107, 255, .08);
 }
 
 .minipager button:disabled {
@@ -1495,17 +1459,17 @@ h1 {
   gap: 18px;
   align-items: center;
   padding: 15px 6px 15px 0;
-  border-bottom: 1px solid rgba(227,220,207,.55);
+  border-bottom: 1px solid rgba(232, 236, 244, .8);
   cursor: pointer;
   transition: background .16s ease;
 }
 
 .row:hover {
-  background: rgba(255,253,248,.8);
+  background: rgba(255, 255, 255, .8);
 }
 
 .row .rname {
-  font-family: "Iowan Old Style", Palatino, "Songti SC", serif;
+  font-family: var(--serif);
   font-size: 16.5px;
   letter-spacing: .02em;
 }
@@ -1518,7 +1482,7 @@ h1 {
 
 .row .rtags {
   font-size: 11.5px;
-  color: #6d786f;
+  color: #4a5578;
   line-height: 1.6;
 }
 
@@ -1544,7 +1508,7 @@ h1 {
 }
 
 .row .rrep.empty {
-  color: #a8b0aa;
+  color: #a8b2c8;
 }
 
 .row .rgo {
@@ -1556,6 +1520,12 @@ h1 {
 
 .row:hover .rgo {
   opacity: 1;
+}
+
+.dotsep {
+  color: var(--gold);
+  margin: 0 6px;
+  opacity: .75;
 }
 
 .pager {
@@ -1599,11 +1569,11 @@ h1 {
 
 .pnum:hover:not(:disabled):not(.on) {
   color: var(--ink);
-  background: rgba(31,107,74,.07);
+  background: rgba(46, 107, 255, .07);
 }
 
 .pnum.on {
-  color: var(--paper);
+  color: #fff;
   background: var(--accent);
 }
 
@@ -1615,7 +1585,7 @@ h1 {
 .drawer-mask {
   position: fixed;
   inset: 0;
-  background: rgba(23,36,30,.34);
+  background: rgba(23, 28, 46, .34);
   backdrop-filter: blur(3px);
   display: none;
   z-index: 40;
@@ -1633,7 +1603,7 @@ h1 {
   height: 100%;
   overflow-y: auto;
   padding: 30px 32px 60px;
-  box-shadow: -30px 0 60px -30px rgba(0,0,0,.4);
+  box-shadow: -30px 0 60px -30px rgba(23, 28, 46, .4);
   transform: translateX(24px);
   opacity: 0;
   transition: all .26s ease;
@@ -1658,11 +1628,11 @@ h1 {
   margin: 0;
   font-size: 11px;
   letter-spacing: .2em;
-  color: #c4a574;
+  color: var(--gold);
 }
 
 .drawer h2 {
-  font-family: "Iowan Old Style", Palatino, "Songti SC", serif;
+  font-family: var(--serif);
   font-size: 34px;
   font-weight: 500;
   margin: 6px 0 0;
@@ -1676,6 +1646,9 @@ h1 {
 
 .drawer-tags {
   margin-top: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .drawer-tags .tag {
@@ -1685,14 +1658,13 @@ h1 {
   padding: 4px 10px;
   border: 1px solid var(--line);
   color: var(--muted);
-  background: rgba(255,255,255,.55);
-  margin: 0 6px 6px 0;
+  background: rgba(255, 255, 255, .55);
 }
 
 .drawer-tags .tag.domain {
   border-style: dashed;
-  color: #7a6a4f;
-  border-color: #e0d3ba;
+  color: #4f6db8;
+  border-color: #c7d5f5;
 }
 
 .dsec {
@@ -1711,7 +1683,7 @@ h1 {
   margin: 0 0 8px;
   font-size: 13.2px;
   line-height: 1.75;
-  color: #2c3731;
+  color: #3c4560;
 }
 
 .dsec p b {
@@ -1739,7 +1711,7 @@ h1 {
 
 .dcase .dportrait {
   font-size: 12.6px;
-  color: #5e6a63;
+  color: var(--muted);
   margin: 0;
 }
 
@@ -1747,7 +1719,7 @@ h1 {
   margin: 6px 0 0;
   padding-left: 16px;
   font-size: 12.6px;
-  color: #46524c;
+  color: #4a5578;
   line-height: 1.7;
 }
 
@@ -1762,7 +1734,7 @@ h1 {
 }
 
 .muted-line {
-  color: #5e6a63;
+  color: var(--muted);
 }
 
 .drawer .cta {
@@ -1786,15 +1758,26 @@ h1 {
 .drawer .cta .btn.solid {
   background: var(--accent);
   border-color: var(--accent);
-  color: var(--paper);
-}
-
-.drawer .cta .btn.solid:hover {
-  background: #164b34;
   color: #fff;
 }
 
+.drawer .cta .btn.solid:hover {
+  background: var(--accent-deep);
+  color: #fff;
+}
+
+@media (max-width: 1250px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+    grid-auto-rows: 300px;
+  }
+}
+
 @media (max-width: 900px) {
+  h1 {
+    font-size: 44px;
+  }
+
   .row {
     grid-template-columns: 84px 1fr 36px 14px;
     gap: 14px;
@@ -1806,9 +1789,45 @@ h1 {
   }
 }
 
+@media (max-width: 768px) {
+  .grid {
+    grid-template-columns: 1fr;
+    grid-auto-rows: auto;
+    gap: 20px;
+    perspective: none;
+  }
+
+  .card {
+    height: auto;
+    min-height: 280px;
+    transform: none !important;
+    padding: 22px 20px 18px;
+  }
+
+  .card .shine {
+    display: none;
+  }
+
+  .cmain .name {
+    font-size: 27px;
+  }
+
+  .cmain .role {
+    font-size: 14.5px;
+  }
+
+  .cstats b {
+    font-size: 20px;
+  }
+
+  .cstats span {
+    font-size: 9.5px;
+  }
+}
+
 @media (max-width: 640px) {
   h1 {
-    font-size: 38px;
+    font-size: 33px;
   }
 
   .toolbar {
@@ -1834,14 +1853,6 @@ h1 {
 
   .search {
     width: 100%;
-  }
-
-  .card {
-    padding: 22px 20px 18px;
-  }
-
-  .name {
-    font-size: 25px;
   }
 
   .row {
