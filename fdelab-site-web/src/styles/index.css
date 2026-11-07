@@ -1,11 +1,20 @@
 :root {
-  --ink: #17241e;
-  --muted: #5e6a63;
-  --paper: #f4f1ea;
-  --card: #fffdf8;
-  --line: #e3dccf;
-  --accent: #1f6b4a;
-  --gold: #c4a574;
+  --ink: #171c2e;
+  --ink-soft: #2a3045;
+  --muted: #66708a;
+  --paper: #f5f7fb;
+  --card: #ffffff;
+  --line: #e8ecf4;
+  --accent: #2e6bff;
+  --accent-deep: #1f56d6;
+  --blue-soft: #eef3ff;
+  --dark-1: #1b2440;
+  --dark-2: #171c2e;
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Songti SC", "Source Han Serif SC", "Noto Serif SC", "SimSun", serif;
+  --sans: "Avenir Next", "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", "Noto Sans SC", sans-serif;
+  /* 版心系统：--wrap 是内容净宽，--gut 是侧边最小留白 */
+  --wrap: 1200px;
+  --gut: clamp(24px, 3.8vw, 64px);
 }
 
 * {
@@ -20,9 +29,13 @@ body,
 }
 
 body {
-  font-family: "Avenir Next", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", sans-serif;
+  font-family: var(--sans);
   color: var(--ink);
-  background: var(--paper);
+  background:
+    radial-gradient(ellipse 46% 34% at 18% -4%, #e3ecfc 0%, transparent 62%),
+    radial-gradient(ellipse 42% 30% at 86% 4%, #ece7fc 0%, transparent 60%),
+    var(--paper);
+  -webkit-font-smoothing: antialiased;
 }
 
 a {
@@ -36,40 +49,19 @@ a {
   flex-direction: column;
 }
 
-.top {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 18px 7vw;
-  background: rgba(244, 241, 234, 0.92);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid var(--line);
-}
-
-.brand {
-  font-family: "Iowan Old Style", Palatino, "Songti SC", serif;
-  font-size: 24px;
-  letter-spacing: 0.04em;
-}
-
-nav {
-  display: flex;
-  gap: 22px;
-  color: var(--muted);
+/* 首页 mockup 的 * 归零只在站点壳层内生效，避免影响人才页等独立页面 */
+.site,
+.site * {
+  margin: 0;
+  padding: 0;
 }
 
 main {
   flex: 1;
 }
 
-footer {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 28px 7vw 36px;
-  color: var(--muted);
-  border-top: 1px solid var(--line);
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
 }
