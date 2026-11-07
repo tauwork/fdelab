@@ -8,6 +8,10 @@
   --accent: #2e6bff;
   --accent-deep: #1f56d6;
   --blue-soft: #eef3ff;
+  /* 认证等级三色：M 深红 / P 蓝 / A 绿 */
+  --m: #b42a3c; --m-bg: #fdeef0; --m-line: #f2cbd2;
+  --p: #1f56d6; --p-bg: #ecf2ff; --p-line: #d5e2fc;
+  --a: #17744a; --a-bg: #ebf7f1; --a-line: #c9e9d8;
   --dark-1: #1b2440;
   --dark-2: #171c2e;
   --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Songti SC", "Source Han Serif SC", "Noto Serif SC", "SimSun", serif;

@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
 import ArticleView from '../views/ArticleView.vue'
 import TalentListView from '../views/TalentListView.vue'
+import TalentListViewLegacy from '../views/TalentListViewLegacy.vue'
 import TalentPage from '../views/TalentPage.vue'
 import UnderConstruction from '../views/UnderConstruction.vue'
 
@@ -16,6 +17,8 @@ const router = createRouter({
     { path: '/caliber', name: 'caliber', component: UnderConstruction, meta: { title: '数据口径说明' } },
     { path: '/articles/:id', name: 'article', component: ArticleView },
     { path: '/talents', name: 'talents', component: TalentListView },
+    // 仅用于新旧列表页并排对比，不进导航、不对外暴露入口
+    { path: '/talents-legacy', name: 'talentsLegacy', component: TalentListViewLegacy },
     { path: '/t/:slug', name: 'talent', component: TalentPage },
   ],
   scrollBehavior(to) {

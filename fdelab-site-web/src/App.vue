@@ -20,5 +20,5 @@ import { talentSlugFromHost } from './utils/host'
 
 const route = useRoute()
 const activeSlug = computed(() => talentSlugFromHost(window.location.hostname) || (route.name === 'talent' ? String(route.params.slug || '') : ''))
-const bareRoute = computed(() => route.name === 'talents')
+const bareRoute = computed(() => route.name === 'talents' || route.name === 'talentsLegacy')
 </script>
