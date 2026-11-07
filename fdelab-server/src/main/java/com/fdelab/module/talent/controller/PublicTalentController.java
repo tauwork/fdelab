@@ -9,6 +9,7 @@ import com.fdelab.module.talent.dto.TalentSaveRequest;
 import com.fdelab.module.talent.service.TalentService;
 import com.fdelab.module.talent.vo.SkillDescriptor;
 import com.fdelab.module.talent.vo.TalentLikeVO;
+import com.fdelab.module.talent.vo.TalentRosterVO;
 import com.fdelab.module.talent.vo.TalentVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -45,6 +46,16 @@ public class PublicTalentController {
                                                @RequestParam(defaultValue = "20") long size,
                                                @RequestParam(required = false) String visitorKey) {
         return ApiResult.ok(talentService.pagePublic(page, size, visitorKey));
+    }
+
+    @Operation(summary = "FDE 名录，分页 + 筛选 + 排序")
+    @GetMapping("/talents/roster")
+    public ApiResult<TalentRosterVO> roster(@RequestParam(defaultValue = "1") long page,
+                                             @RequestParam(defaultValue = "12") long size,
+                                             @RequestParam(required = false) String q,
+                                             @RequestParam(defaultValue = "all") String level,
+                                             @RequestParam(defaultValue = "cases") String sort) {
+        return ApiResult.ok(talentService.rosterList(page, size, q, level, sort));
     }
 
     @Operation(summary = "按子域名读取个人主页")

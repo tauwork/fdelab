@@ -24,5 +24,11 @@ public class TalentSaveRequest {
     private String location;
     private Integer published;
     private Integer likeCount;
+    /** CFDE 等级：A / P / M */
+    private String levelCode;
+    /** 年资（年） */
+    private Integer years;
+    /** 可公开案例数 */
+    private Integer caseCount;
     private TalentProfile profile;
 }

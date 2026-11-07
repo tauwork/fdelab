@@ -24,6 +24,13 @@ public class FdeTalent extends BaseEntity {
     private Integer likeCount;
     private Integer published;
 
+    /** CFDE 等级：A / P / M；旧数据为 NULL，同时作为新旧名单分界 */
+    private String levelCode;
+    /** 年资（年） */
+    private Integer years;
+    /** 可公开案例数 */
+    private Integer caseCount;
+
     private String profileJson;
 
     @TableLogic

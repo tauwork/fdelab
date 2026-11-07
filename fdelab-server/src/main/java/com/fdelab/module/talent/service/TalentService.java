@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fdelab.common.api.PageData;
 import com.fdelab.common.exception.BizException;
 import com.fdelab.module.talent.config.TalentProperties;
+import com.fdelab.module.talent.config.TalentRosterMeta;
 import com.fdelab.module.talent.dto.TalentSaveRequest;
 import com.fdelab.module.talent.entity.FdeTalent;
 import com.fdelab.module.talent.entity.FdeTalentLike;
@@ -15,7 +16,9 @@ import com.fdelab.module.talent.mapper.FdeTalentLikeMapper;
 import com.fdelab.module.talent.mapper.FdeTalentMapper;
 import com.fdelab.module.talent.model.TalentProfile;
 import com.fdelab.module.talent.support.TalentSlugs;
+import com.fdelab.module.talent.vo.RosterItemVO;
 import com.fdelab.module.talent.vo.TalentLikeVO;
+import com.fdelab.module.talent.vo.TalentRosterVO;
 import com.fdelab.module.talent.vo.TalentVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DuplicateKeyException;
@@ -24,8 +27,11 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
@@ -38,11 +44,46 @@ public class TalentService extends ServiceImpl<FdeTalentMapper, FdeTalent> {
     private final ObjectMapper objectMapper;
 
     public PageData<TalentVO> pagePublic(long page, long size, String visitorKey) {
+        // 旧接口只返回旧名单（level_code IS NULL），保证小程序与旧个人页行为不变。
         Page<FdeTalent> result = page(pageOf(page, size), Wrappers.<FdeTalent>lambdaQuery()
                 .eq(FdeTalent::getPublished, 1)
+                .isNull(FdeTalent::getLevelCode)
                 .orderByDesc(FdeTalent::getLikeCount)
                 .orderByAsc(FdeTalent::getId));
         return toPage(result, visitorKey, false);
+    }
+
+    /**
+     * 新版 FDE 名录：分页、关键词、等级筛选、SQL 排序。
+     * <p>stats 与 levels 始终按全量已发布新名单计算，不随分页/筛选变化。</p>
+     */
+    public TalentRosterVO rosterList(long page, long size, String q, String level, String sort) {
+        String keyword = StringUtils.hasText(q) ? q.trim() : null;
+        String levelCode = normalizeLevelFilter(level);
+        String sortKey = normalizeRosterSort(sort);
+
+        Page<FdeTalent> result = baseMapper.selectRosterPage(pageOf(page, size), keyword, levelCode, sortKey);
+        List<RosterItemVO> records = result.getRecords().stream()
+                .map(this::toRosterItem)
+                .toList();
+
+        RosterStats stats = loadRosterStats();
+        List<TalentRosterVO.LevelVO> levels = TalentRosterMeta.LEVELS.stream()
+                .map(item -> new TalentRosterVO.LevelVO(
+                        item.code(),
+                        item.label(),
+                        item.definition(),
+                        stats.levelCounts().getOrDefault(item.code(), 0L).intValue()))
+                .toList();
+
+        return new TalentRosterVO(
+                new TalentRosterVO.Stats(
+                        (int) stats.talentCount(),
+                        (int) stats.levelCount(),
+                        (int) stats.industryCount(),
+                        TalentRosterMeta.STANDARD_COUNT),
+                levels,
+                PageData.of(result, records));
     }
 
     public PageData<TalentVO> pageAdmin(long page, long size, String keyword) {
@@ -172,7 +213,104 @@ public class TalentService extends ServiceImpl<FdeTalentMapper, FdeTalent> {
         talent.setWebsite(blankToNull(request.getWebsite()));
         talent.setWebsiteLabel(blankToNull(request.getWebsiteLabel()));
         talent.setLocation(blankToNull(request.getLocation()));
+        // 旧版后台/上传请求不携带这三个字段，保留已有值，避免保存时清空人才名录数据
+        if (request.getLevelCode() != null) {
+            talent.setLevelCode(normalizeLevelCode(request.getLevelCode()));
+        }
+        if (request.getYears() != null) {
+            talent.setYears(request.getYears());
+        }
+        if (request.getCaseCount() != null) {
+            talent.setCaseCount(request.getCaseCount());
+        }
         talent.setProfileJson(writeProfile(request.getProfile() == null ? new TalentProfile() : request.getProfile()));
+    }
+
+    private String normalizeLevelCode(String level) {
+        if (!StringUtils.hasText(level)) {
+            return null;
+        }
+        String value = level.trim().toUpperCase(Locale.ROOT);
+        return switch (value) {
+            case "A", "P", "M" -> value;
+            default -> null;
+        };
+    }
+
+    private String normalizeLevelFilter(String level) {
+        String value = normalizeLevelCode(level);
+        return value == null ? "all" : value;
+    }
+
+    private String normalizeRosterSort(String sort) {
+        if (!StringUtils.hasText(sort)) {
+            return "cases";
+        }
+        String value = sort.trim().toLowerCase(Locale.ROOT);
+        return switch (value) {
+            case "years", "level", "cases" -> value;
+            default -> "cases";
+        };
+    }
+
+    private RosterItemVO toRosterItem(FdeTalent talent) {
+        TalentProfile profile = readProfile(talent.getProfileJson());
+        return new RosterItemVO(
+                talent.getSlug(),
+                talent.getName(),
+                talent.getLevelCode(),
+                talent.getHeadline(),
+                talent.getSummary(),
+                copy(profile.getIndustryTags()),
+                copy(profile.getSkills()),
+                talent.getYears(),
+                talent.getCaseCount() == null ? 0 : talent.getCaseCount());
+    }
+
+    /**
+     * 全量统计口径：
+     * <ul>
+     *   <li>talentCount：已发布且 level_code 非空的记录数</li>
+     *   <li>levelCount：上述记录里 distinct level_code 的数量</li>
+     *   <li>industryCount：上述记录 profile_json.industryTags 去重，
+     *       排除字面值「跨行业（通才）」——它表示通才位，不是一个行业</li>
+     * </ul>
+     * 注意：这是全量统计，不对当前页 records 去重，否则翻页时数字会变。
+     */
+    private RosterStats loadRosterStats() {
+        List<FdeTalent> all = list(Wrappers.<FdeTalent>lambdaQuery()
+                .select(FdeTalent::getLevelCode, FdeTalent::getProfileJson)
+                .eq(FdeTalent::getPublished, 1)
+                .isNotNull(FdeTalent::getLevelCode));
+
+        Map<String, Long> levelCounts = new HashMap<>();
+        Set<String> levels = new HashSet<>();
+        Set<String> industries = new HashSet<>();
+        for (FdeTalent talent : all) {
+            String code = normalizeLevelCode(talent.getLevelCode());
+            if (code != null) {
+                levels.add(code);
+                levelCounts.merge(code, 1L, Long::sum);
+            }
+            TalentProfile profile = readProfile(talent.getProfileJson());
+            if (profile.getIndustryTags() == null) {
+                continue;
+            }
+            for (String tag : profile.getIndustryTags()) {
+                if (!StringUtils.hasText(tag)) {
+                    continue;
+                }
+                String value = tag.trim();
+                if (!"跨行业（通才）".equals(value)) {
+                    industries.add(value);
+                }
+            }
+        }
+        return new RosterStats(all.size(), levels.size(), industries.size(), levelCounts);
+    }
+
+    private record RosterStats(long talentCount, long levelCount, long industryCount,
+                               Map<String, Long> levelCounts) {
     }
 
     private String resolveSlug(TalentSaveRequest request, String current) {
