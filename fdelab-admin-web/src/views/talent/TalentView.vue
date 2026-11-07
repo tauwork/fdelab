@@ -132,6 +132,8 @@ function blankForm() {
     badgesText: '',
     identityText: '',
     industryText: '',
+    skillsText: '',
+    radarText: '',
     roles: [],
     experiences: [],
     services: [],
@@ -162,6 +164,8 @@ function fillForm(data) {
     badgesText: (profile.badges || []).join('\n'),
     identityText: (profile.identityTags || []).join('\n'),
     industryText: (profile.industryTags || []).join('\n'),
+    skillsText: (profile.skills || []).join('\n'),
+    radarText: (profile.radar || []).join(', '),
     roles: profile.roles || [],
     experiences: profile.experiences || [],
     services: profile.services || [],
@@ -187,6 +191,10 @@ function payload() {
       badges: lines(form.badgesText),
       identityTags: lines(form.identityText),
       industryTags: lines(form.industryText),
+      skills: lines(form.skillsText),
+      radar: lines(form.radarText)
+        .map((item) => Number(item))
+        .filter((item) => Number.isFinite(item)),
       roles: form.roles,
       experiences: form.experiences,
       services: form.services,
@@ -197,6 +205,7 @@ function payload() {
         portrait: item.portrait,
         points: lines(item.pointsText),
         delivery: item.delivery,
+        role: item.role,
       })),
     },
   }
