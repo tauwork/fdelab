@@ -106,7 +106,7 @@
             <div class="cfoot">
               <span class="cnt">案例 <b>{{ item.caseCount }}</b></span>
               <span class="yr">年资 <b>{{ item.years }}</b></span>
-              <RouterLink class="more" :to="`/t/${item.slug}`">查看 <i>→</i></RouterLink>
+              <RouterLink class="more" :to="`/talents/${item.slug}`">查看 <i>→</i></RouterLink>
             </div>
           </article>
 
@@ -134,7 +134,7 @@
                 <td class="dir">{{ item.role }}</td>
                 <td class="n">{{ item.years }} 年</td>
                 <td class="n">{{ item.caseCount }}</td>
-                <td><RouterLink class="go" :to="`/t/${item.slug}`">查看 →</RouterLink></td>
+                <td><RouterLink class="go" :to="`/talents/${item.slug}`">查看 →</RouterLink></td>
               </tr>
             </tbody>
           </table>

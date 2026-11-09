@@ -12,6 +12,10 @@ export function fetchTalentBySlug(slug, visitorKey) {
   return http.get(`/api/public/talents/slug/${slug}`, { params: { visitorKey } })
 }
 
+export function fetchTalentProfile(slug) {
+  return http.get(`/api/public/talents/profile/${slug}`)
+}
+
 export function toggleTalentLike(id, visitorKey) {
   return http.post(`/api/public/talents/${id}/like`, { visitorKey })
 }
