@@ -9,6 +9,7 @@ import com.fdelab.module.talent.dto.TalentSaveRequest;
 import com.fdelab.module.talent.service.TalentService;
 import com.fdelab.module.talent.vo.SkillDescriptor;
 import com.fdelab.module.talent.vo.TalentLikeVO;
+import com.fdelab.module.talent.vo.TalentProfileVO;
 import com.fdelab.module.talent.vo.TalentRosterVO;
 import com.fdelab.module.talent.vo.TalentVO;
 import io.swagger.v3.oas.annotations.Operation;
@@ -63,6 +64,12 @@ public class PublicTalentController {
     public ApiResult<TalentVO> bySlug(@PathVariable String slug,
                                        @RequestParam(required = false) String visitorKey) {
         return ApiResult.ok(talentService.getPublicBySlug(slug, visitorKey));
+    }
+
+    @Operation(summary = "FDE 详情页")
+    @GetMapping("/talents/profile/{slug}")
+    public ApiResult<TalentProfileVO> profile(@PathVariable String slug) {
+        return ApiResult.ok(talentService.getProfileBySlug(slug));
     }
 
     @Operation(summary = "点赞或取消点赞")

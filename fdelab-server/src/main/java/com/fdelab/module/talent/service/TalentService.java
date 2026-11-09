@@ -7,6 +7,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fdelab.common.api.PageData;
 import com.fdelab.common.exception.BizException;
+import com.fdelab.module.talent.config.TalentProfileMeta;
 import com.fdelab.module.talent.config.TalentProperties;
 import com.fdelab.module.talent.config.TalentRosterMeta;
 import com.fdelab.module.talent.dto.TalentSaveRequest;
@@ -16,8 +17,10 @@ import com.fdelab.module.talent.mapper.FdeTalentLikeMapper;
 import com.fdelab.module.talent.mapper.FdeTalentMapper;
 import com.fdelab.module.talent.model.TalentProfile;
 import com.fdelab.module.talent.support.TalentSlugs;
+import com.fdelab.module.talent.vo.ProjectVO;
 import com.fdelab.module.talent.vo.RosterItemVO;
 import com.fdelab.module.talent.vo.TalentLikeVO;
+import com.fdelab.module.talent.vo.TalentProfileVO;
 import com.fdelab.module.talent.vo.TalentRosterVO;
 import com.fdelab.module.talent.vo.TalentVO;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -108,6 +112,65 @@ public class TalentService extends ServiceImpl<FdeTalentMapper, FdeTalent> {
             throw new BizException(404, "还没有这位 FDE 的主页");
         }
         return toVo(talent, visitorKey, true);
+    }
+
+    public TalentProfileVO getProfileBySlug(String slug) {
+        FdeTalent talent = getOne(Wrappers.<FdeTalent>lambdaQuery()
+                .eq(FdeTalent::getSlug, slug)
+                .eq(FdeTalent::getPublished, 1)
+                .isNotNull(FdeTalent::getLevelCode));
+        if (talent == null) {
+            throw new BizException(404, "还没有这位 FDE 的主页");
+        }
+        String levelCode = normalizeLevelCode(talent.getLevelCode());
+        if (levelCode == null) {
+            throw new BizException(404, "还没有这位 FDE 的主页");
+        }
+        TalentProfile profile = readProfile(talent.getProfileJson());
+
+        List<Integer> radar = validRadar(profile.getRadar())
+                ? copy(profile.getRadar())
+                : List.of();
+        String strengthDim = "";
+        String strengthText = "";
+        if (!radar.isEmpty()) {
+            int strongest = radar.indexOf(Collections.max(radar));
+            strengthDim = TalentProfileMeta.RADAR_DIMS.get(strongest);
+            strengthText = TalentProfileMeta.strengthText(strengthDim, radar.get(strongest), levelCode);
+        }
+
+        List<ProjectVO> projects = profile.getCases() == null ? List.of() : profile.getCases().stream()
+                .filter(Objects::nonNull)
+                .map(item -> new ProjectVO(item.getTitle(), item.getRole(), item.getDelivery()))
+                .toList();
+
+        return new TalentProfileVO(
+                talent.getSlug(),
+                talent.getName(),
+                "CFDE-" + levelCode,
+                TalentProfileMeta.levelName(levelCode),
+                talent.getHeadline(),
+                talent.getSummary(),
+                talent.getYears(),
+                copy(profile.getIndustryTags()),
+                copy(profile.getSkills()),
+                radar,
+                projects,
+                TalentProfileMeta.RADAR_DIMS,
+                strengthText,
+                strengthDim);
+    }
+
+    private boolean validRadar(List<Integer> radar) {
+        if (radar == null || radar.size() != 5) {
+            return false;
+        }
+        for (Integer value : radar) {
+            if (value == null || value < 0 || value > 10) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public TalentVO getAdmin(Long id) {
