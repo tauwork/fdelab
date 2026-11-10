@@ -79,6 +79,16 @@
             <el-form-item label="交付方">
               <el-input v-model="form.partner" maxlength="200" />
             </el-form-item>
+            <el-form-item label="主要关联 FDE">
+              <el-select v-model="form.primaryFdeId" filterable clearable placeholder="选择人才（详情页会展示该案例）">
+                <el-option
+                  v-for="item in talentOptions"
+                  :key="item.id"
+                  :label="`${item.name}${item.slug ? ' · ' + item.slug : ''}`"
+                  :value="item.id"
+                />
+              </el-select>
+            </el-form-item>
             <el-form-item label="行业">
               <el-select v-model="form.industry" filterable allow-create clearable default-first-option placeholder="选择或输入后回车新建">
                 <el-option v-for="item in meta.industries" :key="item" :label="item" :value="item" />
@@ -376,6 +386,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { createCase, fetchCase, fetchCaseMeta, publishCase, SITE_BASE, updateCase, validateCase } from '../../api/case'
 import { createCustomer, searchCustomers } from '../../api/customer'
+import { fetchTalents } from '../../api/talent'
 import { useUserStore } from '../../stores/user'
 import MetricTable from './components/MetricTable.vue'
 import KpiEditor from './components/KpiEditor.vue'
@@ -407,6 +418,7 @@ const customerLoading = ref(false)
 const customerSaving = ref(false)
 const customerDialogVisible = ref(false)
 const customerOptions = ref([])
+const talentOptions = ref([])
 const customerForm = reactive({ displayName: '', isMasked: 1 })
 const savedAt = ref(null)
 const saveStatus = ref('尚未保存')
@@ -640,6 +652,15 @@ async function loadMeta() {
     if (data?.creds?.length) meta.creds = data.creds
   } catch (error) {
     ElMessage.error(error.message || '词表加载失败')
+  }
+}
+
+async function loadTalentOptions() {
+  try {
+    const data = await fetchTalents({ page: 1, size: 100 })
+    talentOptions.value = data?.records || []
+  } catch (error) {
+    ElMessage.error(error.message || '人才列表加载失败')
   }
 }
 
@@ -934,6 +955,7 @@ function openSite() {
 
 onMounted(async () => {
   await loadMeta()
+  await loadTalentOptions()
   const id = route.params.id || null
   if (id) {
     await loadCase(id)

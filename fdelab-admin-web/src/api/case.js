@@ -31,6 +31,11 @@ export function fetchCaseMeta() {
   return http.get('/api/admin/cases/meta')
 }
 
+/** 人才关联案例选择器：按编号/标题/交付方搜索，最多 20 条（含草稿）。 */
+export function fetchCaseOptions(keyword) {
+  return http.get('/api/admin/cases/options', { params: { keyword: keyword || undefined } })
+}
+
 export function createCase(data) {
   return http.post('/api/admin/cases', data).then(flatten)
 }
