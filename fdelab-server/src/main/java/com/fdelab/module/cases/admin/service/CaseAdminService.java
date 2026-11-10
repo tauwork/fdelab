@@ -8,6 +8,7 @@ import com.fdelab.module.cases.admin.dto.CaseForm;
 import com.fdelab.module.cases.admin.vo.CaseAdminListItemVO;
 import com.fdelab.module.cases.admin.vo.CaseAdminVO;
 import com.fdelab.module.cases.admin.vo.CaseMetaVO;
+import com.fdelab.module.cases.admin.vo.CaseOptionVO;
 import com.fdelab.module.cases.admin.vo.CaseValidationVO;
 import com.fdelab.module.cases.entity.FdeCase;
 import com.fdelab.module.cases.entity.FdeCustomer;
@@ -15,6 +16,7 @@ import com.fdelab.module.cases.mapper.FdeCaseMapper;
 import com.fdelab.module.cases.mapper.FdeCustomerMapper;
 import com.fdelab.module.cases.model.CaseContent;
 import com.fdelab.module.cases.service.CaseContentCodec;
+import com.fdelab.module.talent.service.TalentCaseLinkService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
@@ -43,7 +45,7 @@ import java.util.stream.Collectors;
  * 案例后台写入路径。
  *
  * <p>JSON 读写统一走 {@link CaseContentCodec}；本类不手拼 JSON。</p>
- * <p>TODO 二期：发布权限仅 ADMIN，本期只在前端隐藏发布按钮，后端未做角色校验。</p>
+ * <p>发布/下架只在 CaseAdminController 里做 ADMIN 角色校验，本服务不判角色。</p>
  */
 @Service
 @RequiredArgsConstructor
@@ -63,6 +65,7 @@ public class CaseAdminService {
     private final FdeCustomerMapper customerMapper;
     private final CaseContentCodec contentCodec;
     private final CustomerAdminService customerAdminService;
+    private final TalentCaseLinkService talentCaseLinkService;
 
     public PageData<CaseAdminListItemVO> page(long page, long size, String q, String industry,
                                               String cred, Integer published) {
@@ -102,6 +105,30 @@ public class CaseAdminService {
         return toVO(require(id));
     }
 
+    /** 人才关联选择器：按编号/标题/交付方搜索，返回最多 20 条（含草稿）。 */
+    public List<CaseOptionVO> options(String keyword) {
+        String text = trimToNull(keyword);
+        List<FdeCase> rows = caseMapper.selectList(Wrappers.<FdeCase>lambdaQuery()
+                .select(FdeCase::getId, FdeCase::getCode, FdeCase::getTitle,
+                        FdeCase::getIndustry, FdeCase::getPublished)
+                .and(text != null, wrapper -> wrapper
+                        .like(FdeCase::getCode, text)
+                        .or()
+                        .like(FdeCase::getTitle, text)
+                        .or()
+                        .like(FdeCase::getPartner, text))
+                .orderByDesc(FdeCase::getUpdateTime)
+                .last("LIMIT 20"));
+        return rows.stream()
+                .map(item -> new CaseOptionVO(
+                        item.getId(),
+                        item.getCode(),
+                        item.getTitle(),
+                        item.getIndustry(),
+                        item.getPublished()))
+                .toList();
+    }
+
     @Transactional
     public CaseAdminVO create(CaseForm form) {
         Long customerId = resolveCustomer(form);
@@ -117,19 +144,25 @@ public class CaseAdminService {
     @Transactional
     public CaseAdminVO update(Long id, CaseForm form) {
         FdeCase entity = require(id);
+        Long previousPrimaryFdeId = entity.getPrimaryFdeId();
         // PUT 忽略请求里的 code，一律用库里的值。
         Long customerId = resolveCustomer(form);
         apply(entity, form, customerId);
         // PUT 不改 published；显式刷新更新时间，保证列表按更新时间倒序符合预期。
         entity.setUpdateTime(LocalDateTime.now());
         caseMapper.updateById(entity);
+        List<Long> affected = talentCaseLinkService.talentIdsForCase(id);
+        affected.add(previousPrimaryFdeId);
+        talentCaseLinkService.syncCaseCounts(affected);
         return toVO(entity);
     }
 
     @Transactional
     public void delete(Long id) {
         require(id);
+        List<Long> affected = talentCaseLinkService.talentIdsForCase(id);
         caseMapper.deleteById(id);
+        talentCaseLinkService.syncCaseCounts(affected);
     }
 
     @Transactional
@@ -175,6 +208,7 @@ public class CaseAdminService {
         entity.setPublished(1);
         entity.setUpdateTime(LocalDateTime.now());
         caseMapper.updateById(entity);
+        talentCaseLinkService.syncCaseCounts(talentCaseLinkService.talentIdsForCase(id));
         return toVO(entity);
     }
 
@@ -184,6 +218,7 @@ public class CaseAdminService {
         entity.setPublished(0);
         entity.setUpdateTime(LocalDateTime.now());
         caseMapper.updateById(entity);
+        talentCaseLinkService.syncCaseCounts(talentCaseLinkService.talentIdsForCase(id));
         return toVO(entity);
     }
 

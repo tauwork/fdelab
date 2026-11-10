@@ -12,6 +12,8 @@ public interface FdeTalentMapper extends BaseMapper<FdeTalent> {
 
     /**
      * 名录分页查询：筛选与排序全部落到 SQL，分页由 MyBatis-Plus 处理。
+     * <p>口径与后台「已发布」一致：只按 published 过滤，等级为空的人也进名录，
+     * 缺的等级由详情页认证框占位展示。</p>
      * <p>q 匹配 name、headline，以及 profile_json 里的文本（行业/技能等）；
      * sort 的取值已在 service 层白名单收敛。</p>
      */
@@ -22,7 +24,6 @@ public interface FdeTalentMapper extends BaseMapper<FdeTalent> {
             FROM fde_talent
             WHERE deleted = 0
               AND published = 1
-              AND level_code IS NOT NULL
             <if test="q != null and q != ''">
               AND (
                 name LIKE CONCAT('%', #{q}, '%')
@@ -38,7 +39,10 @@ public interface FdeTalentMapper extends BaseMapper<FdeTalent> {
                 ORDER BY years DESC, id ASC
               </when>
               <when test="sort == 'level'">
-                ORDER BY FIELD(level_code, 'M', 'P', 'A'), years DESC, id ASC
+                ORDER BY ISNULL(level_code), FIELD(level_code, 'M', 'P', 'A'), years DESC, id ASC
+              </when>
+              <when test="sort == 'likes'">
+                ORDER BY like_count DESC, id ASC
               </when>
               <otherwise>
                 ORDER BY case_count DESC, years DESC, id ASC

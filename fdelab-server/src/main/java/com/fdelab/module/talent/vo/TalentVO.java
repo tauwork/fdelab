@@ -1,7 +1,10 @@
 package com.fdelab.module.talent.vo;
 
+import com.fdelab.module.talent.config.TalentProfileMeta;
 import com.fdelab.module.talent.entity.FdeTalent;
 import com.fdelab.module.talent.model.TalentProfile;
+
+import java.time.LocalDate;
 
 public record TalentVO(
         Long id,
@@ -17,11 +20,18 @@ public record TalentVO(
         String location,
         Integer likeCount,
         Integer published,
+        String levelCode,
+        String levelName,
+        Integer years,
+        Integer caseCount,
+        Integer accepting,
+        LocalDate reviewTime,
         String homepageUrl,
         Boolean liked,
         TalentProfile profile
 ) {
     public static TalentVO of(FdeTalent talent, String homepageUrl, boolean liked, TalentProfile profile, boolean withContact) {
+        String levelCode = talent.getLevelCode();
         return new TalentVO(
                 talent.getId(),
                 talent.getName(),
@@ -36,6 +46,12 @@ public record TalentVO(
                 talent.getLocation(),
                 talent.getLikeCount() == null ? 0 : talent.getLikeCount(),
                 talent.getPublished(),
+                levelCode,
+                levelCode == null ? null : TalentProfileMeta.levelName(levelCode),
+                talent.getYears(),
+                talent.getCaseCount() == null ? 0 : talent.getCaseCount(),
+                talent.getAccepting() == null ? 1 : talent.getAccepting(),
+                talent.getReviewTime(),
                 homepageUrl,
                 liked,
                 profile);

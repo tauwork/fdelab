@@ -8,8 +8,8 @@ import com.fdelab.module.talent.dto.TalentLikeRequest;
 import com.fdelab.module.talent.dto.TalentSaveRequest;
 import com.fdelab.module.talent.service.TalentService;
 import com.fdelab.module.talent.vo.SkillDescriptor;
+import com.fdelab.module.talent.vo.TalentDetailVO;
 import com.fdelab.module.talent.vo.TalentLikeVO;
-import com.fdelab.module.talent.vo.TalentProfileVO;
 import com.fdelab.module.talent.vo.TalentRosterVO;
 import com.fdelab.module.talent.vo.TalentVO;
 import io.swagger.v3.oas.annotations.Operation;
@@ -68,7 +68,7 @@ public class PublicTalentController {
 
     @Operation(summary = "FDE 详情页")
     @GetMapping("/talents/profile/{slug}")
-    public ApiResult<TalentProfileVO> profile(@PathVariable String slug) {
+    public ApiResult<TalentDetailVO> profile(@PathVariable String slug) {
         return ApiResult.ok(talentService.getProfileBySlug(slug));
     }
 

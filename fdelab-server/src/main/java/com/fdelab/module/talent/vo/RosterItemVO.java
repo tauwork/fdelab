@@ -13,6 +13,7 @@ public record RosterItemVO(
         String level,
         String role,
         String bio,
+        List<String> identityTags,
         List<String> industries,
         List<String> skills,
         Integer years,

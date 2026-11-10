@@ -4,6 +4,8 @@ import com.fdelab.module.talent.model.TalentProfile;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
+import java.time.LocalDate;
+
 @Data
 public class TalentSaveRequest {
 
@@ -22,8 +24,11 @@ public class TalentSaveRequest {
     private String website;
     private String websiteLabel;
     private String location;
-    private Integer published;
     private Integer likeCount;
+    /** 1 可接单 / 0 暂停接单 */
+    private Integer accepting;
+    /** 最近复核时间 */
+    private LocalDate reviewTime;
     /** CFDE 等级：A / P / M */
     private String levelCode;
     /** 年资（年） */

@@ -1,5 +1,6 @@
 package com.fdelab.module.cases.admin.controller;
 
+import cn.dev33.satoken.stp.StpUtil;
 import com.fdelab.common.api.ApiResult;
 import com.fdelab.common.api.PageData;
 import com.fdelab.module.cases.admin.dto.CaseForm;
@@ -7,6 +8,7 @@ import com.fdelab.module.cases.admin.service.CaseAdminService;
 import com.fdelab.module.cases.admin.vo.CaseAdminListItemVO;
 import com.fdelab.module.cases.admin.vo.CaseAdminVO;
 import com.fdelab.module.cases.admin.vo.CaseMetaVO;
+import com.fdelab.module.cases.admin.vo.CaseOptionVO;
 import com.fdelab.module.cases.admin.vo.CaseValidationVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -20,6 +22,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 @Tag(name = "案例管理")
 @RestController
@@ -44,6 +48,12 @@ public class CaseAdminController {
     @GetMapping("/meta")
     public ApiResult<CaseMetaVO> meta() {
         return ApiResult.ok(caseAdminService.meta());
+    }
+
+    @Operation(summary = "人才关联选择器：按编号/标题/交付方搜索")
+    @GetMapping("/options")
+    public ApiResult<List<CaseOptionVO>> options(@RequestParam(name = "keyword", required = false) String keyword) {
+        return ApiResult.ok(caseAdminService.options(keyword));
     }
 
     @Operation(summary = "案例详情")
@@ -77,16 +87,17 @@ public class CaseAdminController {
         return ApiResult.ok(caseAdminService.clone(id));
     }
 
-    @Operation(summary = "发布")
+    @Operation(summary = "发布（仅 ADMIN）")
     @PostMapping("/{id}/publish")
     public ApiResult<CaseAdminVO> publish(@PathVariable("id") Long id) {
-        // TODO 二期：角色鉴权（仅 ADMIN 可发布）。本期不写后端角色校验。
+        StpUtil.checkRole("ADMIN");
         return ApiResult.ok(caseAdminService.publish(id));
     }
 
-    @Operation(summary = "下架")
+    @Operation(summary = "下架（仅 ADMIN）")
     @PostMapping("/{id}/unpublish")
     public ApiResult<CaseAdminVO> unpublish(@PathVariable("id") Long id) {
+        StpUtil.checkRole("ADMIN");
         return ApiResult.ok(caseAdminService.unpublish(id));
     }
 

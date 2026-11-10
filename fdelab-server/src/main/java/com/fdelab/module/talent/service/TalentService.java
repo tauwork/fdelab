@@ -19,8 +19,9 @@ import com.fdelab.module.talent.model.TalentProfile;
 import com.fdelab.module.talent.support.TalentSlugs;
 import com.fdelab.module.talent.vo.ProjectVO;
 import com.fdelab.module.talent.vo.RosterItemVO;
+import com.fdelab.module.talent.vo.TalentCaseCardVO;
+import com.fdelab.module.talent.vo.TalentDetailVO;
 import com.fdelab.module.talent.vo.TalentLikeVO;
-import com.fdelab.module.talent.vo.TalentProfileVO;
 import com.fdelab.module.talent.vo.TalentRosterVO;
 import com.fdelab.module.talent.vo.TalentVO;
 import lombok.RequiredArgsConstructor;
@@ -46,6 +47,8 @@ public class TalentService extends ServiceImpl<FdeTalentMapper, FdeTalent> {
     private final FdeTalentLikeMapper likeMapper;
     private final TalentProperties talentProperties;
     private final ObjectMapper objectMapper;
+    private final TalentCaseLinkService caseLinkService;
+    private final TalentCaseCardAssembler caseCardAssembler;
 
     public PageData<TalentVO> pagePublic(long page, long size, String visitorKey) {
         // 旧接口只返回旧名单（level_code IS NULL），保证小程序与旧个人页行为不变。
@@ -59,7 +62,7 @@ public class TalentService extends ServiceImpl<FdeTalentMapper, FdeTalent> {
 
     /**
      * 新版 FDE 名录：分页、关键词、等级筛选、SQL 排序。
-     * <p>stats 与 levels 始终按全量已发布新名单计算，不随分页/筛选变化。</p>
+     * <p>stats 与 levels 始终按全量已发布名单计算，不随分页/筛选变化。</p>
      */
     public TalentRosterVO rosterList(long page, long size, String q, String level, String sort) {
         String keyword = StringUtils.hasText(q) ? q.trim() : null;
@@ -114,18 +117,14 @@ public class TalentService extends ServiceImpl<FdeTalentMapper, FdeTalent> {
         return toVo(talent, visitorKey, true);
     }
 
-    public TalentProfileVO getProfileBySlug(String slug) {
+    public TalentDetailVO getProfileBySlug(String slug) {
         FdeTalent talent = getOne(Wrappers.<FdeTalent>lambdaQuery()
                 .eq(FdeTalent::getSlug, slug)
-                .eq(FdeTalent::getPublished, 1)
-                .isNotNull(FdeTalent::getLevelCode));
+                .eq(FdeTalent::getPublished, 1));
         if (talent == null) {
             throw new BizException(404, "还没有这位 FDE 的主页");
         }
         String levelCode = normalizeLevelCode(talent.getLevelCode());
-        if (levelCode == null) {
-            throw new BizException(404, "还没有这位 FDE 的主页");
-        }
         TalentProfile profile = readProfile(talent.getProfileJson());
 
         List<Integer> radar = validRadar(profile.getRadar())
@@ -136,29 +135,101 @@ public class TalentService extends ServiceImpl<FdeTalentMapper, FdeTalent> {
         if (!radar.isEmpty()) {
             int strongest = radar.indexOf(Collections.max(radar));
             strengthDim = TalentProfileMeta.RADAR_DIMS.get(strongest);
-            strengthText = TalentProfileMeta.strengthText(strengthDim, radar.get(strongest), levelCode);
+            strengthText = TalentProfileMeta.strengthText(strengthDim, radar.get(strongest),
+                    levelCode == null ? "" : levelCode);
         }
 
         List<ProjectVO> projects = profile.getCases() == null ? List.of() : profile.getCases().stream()
                 .filter(Objects::nonNull)
                 .map(item -> new ProjectVO(item.getTitle(), item.getRole(), item.getDelivery()))
                 .toList();
+        List<TalentDetailVO.RoleVO> roles = profile.getRoles() == null ? List.of() : profile.getRoles().stream()
+                .filter(Objects::nonNull)
+                .map(item -> new TalentDetailVO.RoleVO(item.getOrg(), item.getTitle(), item.getDescription()))
+                .toList();
+        List<TalentDetailVO.TextSectionVO> services = textSections(profile.getServices());
+        List<TalentDetailVO.TextSectionVO> collaborations = textSections(profile.getCollaborations());
+        List<TalentDetailVO.TextSectionVO> experiences = textSections(profile.getExperiences());
+        List<TalentCaseCardVO> cases = caseLinkService.visibleCases(talent.getId()).stream()
+                .map(caseCardAssembler::toCard)
+                .toList();
 
-        return new TalentProfileVO(
+        return new TalentDetailVO(
+                talent.getId(),
                 talent.getSlug(),
                 talent.getName(),
-                "CFDE-" + levelCode,
-                TalentProfileMeta.levelName(levelCode),
+                levelCode,
+                levelCode == null ? null : TalentProfileMeta.levelName(levelCode),
                 talent.getHeadline(),
                 talent.getSummary(),
                 talent.getYears(),
+                talent.getAccepting() == null ? 1 : talent.getAccepting(),
+                talent.getReviewTime(),
+                talent.getLikeCount() == null ? 0 : talent.getLikeCount(),
+                talent.getPublished(),
+                talent.getAvatarUrl(),
+                copy(profile.getIdentityTags()),
                 copy(profile.getIndustryTags()),
                 copy(profile.getSkills()),
+                copy(profile.getBadges()),
                 radar,
-                projects,
                 TalentProfileMeta.RADAR_DIMS,
-                strengthText,
-                strengthDim);
+                strengthText.isEmpty() ? null : strengthText,
+                strengthDim.isEmpty() ? null : strengthDim,
+                roles,
+                services,
+                collaborations,
+                projects,
+                experiences,
+                cases,
+                buildSections(roles, services, collaborations, projects, experiences, cases));
+    }
+
+    private List<TalentDetailVO.TextSectionVO> textSections(List<TalentProfile.TextItem> items) {
+        if (items == null) {
+            return List.of();
+        }
+        return items.stream()
+                .filter(Objects::nonNull)
+                .map(item -> new TalentDetailVO.TextSectionVO(item.getTitle(), item.getDescription()))
+                .toList();
+    }
+
+    /**
+     * 区块顺序对齐 demo：有案例时「项目经历」在「期望的合作」之后；
+     * 无案例时项目经历上移，编号由前端按下标生成，天然不跳号。
+     */
+    private List<TalentDetailVO.SectionVO> buildSections(List<TalentDetailVO.RoleVO> roles,
+                                                         List<TalentDetailVO.TextSectionVO> services,
+                                                         List<TalentDetailVO.TextSectionVO> collaborations,
+                                                         List<ProjectVO> projects,
+                                                         List<TalentDetailVO.TextSectionVO> experiences,
+                                                         List<TalentCaseCardVO> cases) {
+        boolean hasCases = !cases.isEmpty();
+        boolean hasProjects = !projects.isEmpty();
+        List<TalentDetailVO.SectionVO> sections = new ArrayList<>();
+        if (!roles.isEmpty()) {
+            sections.add(new TalentDetailVO.SectionVO("roles", "他是谁"));
+        }
+        if (hasCases) {
+            sections.add(new TalentDetailVO.SectionVO("cases", "代表案例"));
+        }
+        if (!hasCases && hasProjects) {
+            sections.add(new TalentDetailVO.SectionVO("projects", "项目经历"));
+        }
+        if (!services.isEmpty()) {
+            sections.add(new TalentDetailVO.SectionVO("services", "服务内容"));
+        }
+        if (!collaborations.isEmpty()) {
+            sections.add(new TalentDetailVO.SectionVO("collaborations", "期望的合作"));
+        }
+        if (hasCases && hasProjects) {
+            sections.add(new TalentDetailVO.SectionVO("projects", "项目经历"));
+        }
+        if (!experiences.isEmpty()) {
+            sections.add(new TalentDetailVO.SectionVO("experiences", "履历"));
+        }
+        return sections;
     }
 
     private boolean validRadar(List<Integer> radar) {
@@ -187,10 +258,12 @@ public class TalentService extends ServiceImpl<FdeTalentMapper, FdeTalent> {
             created.setLikeCount(0);
             created.setPublished(1);
             saveOrConflict(created);
+            caseLinkService.syncCaseCount(created.getId());
             return toVo(created, null, true);
         }
         apply(existing, request, existing.getSlug(), false);
         updateById(existing);
+        caseLinkService.syncCaseCount(existing.getId());
         return toVo(existing, null, true);
     }
 
@@ -200,8 +273,13 @@ public class TalentService extends ServiceImpl<FdeTalentMapper, FdeTalent> {
         FdeTalent talent = new FdeTalent();
         apply(talent, request, slug, true);
         talent.setLikeCount(request.getLikeCount() == null ? 0 : Math.max(request.getLikeCount(), 0));
-        talent.setPublished(request.getPublished() == null ? 1 : request.getPublished());
+        // 保存只落内容，新建一律是草稿；上线要走仅 ADMIN 可用的发布接口。
+        talent.setPublished(0);
+        if (talent.getAccepting() == null) {
+            talent.setAccepting(1);
+        }
         saveOrConflict(talent);
+        caseLinkService.syncCaseCount(talent.getId());
         return toVo(talent, null, true);
     }
 
@@ -211,12 +289,27 @@ public class TalentService extends ServiceImpl<FdeTalentMapper, FdeTalent> {
         String slug = TalentSlugs.unique(resolveSlug(request, talent.getSlug()), candidate ->
                 slugTakenByOther(candidate, id));
         apply(talent, request, slug, true);
+        // 后台允许清空复核时间；ingest 仍走「非空才覆盖」，避免技能库上传抹掉复核记录。
+        talent.setReviewTime(request.getReviewTime());
+        // 等级和年资同理，后台的「未设置」/清空数字框发过来的是 null：
+        // 不显式覆盖就会出现「提示保存成功、数据没变」，还会留下已发布但不在名录的孤儿主页。
+        talent.setLevelCode(normalizeLevelCode(request.getLevelCode()));
+        talent.setYears(request.getYears());
         if (request.getLikeCount() != null) {
             talent.setLikeCount(Math.max(request.getLikeCount(), 0));
         }
-        if (request.getPublished() != null) {
-            talent.setPublished(request.getPublished());
-        }
+        updateById(talent);
+        caseLinkService.syncCaseCount(talent.getId());
+        return toVo(talent, null, true);
+    }
+
+    /**
+     * 上线/下线。published 不再从保存接口进来，只能由仅 ADMIN 可用的这个入口修改。
+     */
+    @Transactional
+    public TalentVO changePublished(Long id, int published) {
+        FdeTalent talent = require(id);
+        talent.setPublished(published);
         updateById(talent);
         return toVo(talent, null, true);
     }
@@ -283,8 +376,11 @@ public class TalentService extends ServiceImpl<FdeTalentMapper, FdeTalent> {
         if (request.getYears() != null) {
             talent.setYears(request.getYears());
         }
-        if (request.getCaseCount() != null) {
-            talent.setCaseCount(request.getCaseCount());
+        if (request.getAccepting() != null) {
+            talent.setAccepting(request.getAccepting() == 0 ? 0 : 1);
+        }
+        if (request.getReviewTime() != null) {
+            talent.setReviewTime(request.getReviewTime());
         }
         talent.setProfileJson(writeProfile(request.getProfile() == null ? new TalentProfile() : request.getProfile()));
     }
@@ -311,7 +407,7 @@ public class TalentService extends ServiceImpl<FdeTalentMapper, FdeTalent> {
         }
         String value = sort.trim().toLowerCase(Locale.ROOT);
         return switch (value) {
-            case "years", "level", "cases" -> value;
+            case "years", "level", "cases", "likes" -> value;
             default -> "cases";
         };
     }
@@ -324,6 +420,7 @@ public class TalentService extends ServiceImpl<FdeTalentMapper, FdeTalent> {
                 talent.getLevelCode(),
                 talent.getHeadline(),
                 talent.getSummary(),
+                copy(profile.getIdentityTags()),
                 copy(profile.getIndustryTags()),
                 copy(profile.getSkills()),
                 talent.getYears(),
@@ -333,7 +430,7 @@ public class TalentService extends ServiceImpl<FdeTalentMapper, FdeTalent> {
     /**
      * 全量统计口径：
      * <ul>
-     *   <li>talentCount：已发布且 level_code 非空的记录数</li>
+     *   <li>talentCount：已发布的记录数，与名录列表同口径（不看等级）</li>
      *   <li>levelCount：上述记录里 distinct level_code 的数量</li>
      *   <li>industryCount：上述记录 profile_json.industryTags 去重，
      *       排除字面值「跨行业（通才）」——它表示通才位，不是一个行业</li>
@@ -343,8 +440,7 @@ public class TalentService extends ServiceImpl<FdeTalentMapper, FdeTalent> {
     private RosterStats loadRosterStats() {
         List<FdeTalent> all = list(Wrappers.<FdeTalent>lambdaQuery()
                 .select(FdeTalent::getLevelCode, FdeTalent::getProfileJson)
-                .eq(FdeTalent::getPublished, 1)
-                .isNotNull(FdeTalent::getLevelCode));
+                .eq(FdeTalent::getPublished, 1));
 
         Map<String, Long> levelCounts = new HashMap<>();
         Set<String> levels = new HashSet<>();

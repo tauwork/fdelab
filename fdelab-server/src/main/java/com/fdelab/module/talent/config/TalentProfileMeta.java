@@ -32,8 +32,11 @@ public final class TalentProfileMeta {
 
     public static String strengthText(String dimension, int score, String levelCode) {
         String post = POSTS.getOrDefault(levelCode, "");
-        return "五维中最强的是 " + dimension + "（" + score + "/10）。"
-                + "典型派驻形态：「通才 + 领域专家混编」团队中的 " + post
+        String base = "五维中最强的是 " + dimension + "（" + score + "/10）。";
+        if (post.isEmpty()) {
+            return base;
+        }
+        return base + "典型派驻形态：「通才 + 领域专家混编」团队中的 " + post
                 + "，对一条业务链路的生产结果负责。";
     }
 }
