@@ -60,7 +60,13 @@
         </el-form-item>
         <el-form-item label="年资（年）"><el-input-number v-model="form.years" :min="0" :max="60" /></el-form-item>
         <el-form-item label="最近复核时间">
-          <el-date-picker v-model="form.reviewTime" type="date" value-format="YYYY-MM-DD" placeholder="选择日期" />
+          <el-date-picker
+            v-model="form.reviewTime"
+            type="date"
+            value-format="YYYY-MM-DD"
+            placeholder="选择日期"
+            :disabled-date="notAfterToday"
+          />
         </el-form-item>
         <el-form-item label="接单状态">
           <el-switch v-model="form.accepting" :active-value="1" :inactive-value="0" active-text="可接单" inactive-text="暂停接单" />
@@ -198,6 +204,9 @@ const isAdmin = computed(() => userStore.profile?.roleCode === 'ADMIN')
 
 // 下标顺序即 profile_json.radar 的顺序，与后端 TalentProfileMeta.RADAR_DIMS 保持一致，不可调整。
 const RADAR_DIMS = ['工程实现', '业务翻译', '评测设计', '抽象复用', '现场推进']
+
+// 复核是对既往记录的确认，未来日期不可选。
+const notAfterToday = (date) => date.getTime() > Date.now()
 
 const loading = ref(false)
 const saving = ref(false)
