@@ -1,26 +1,26 @@
 <template>
   <div class="roster-page">
-    <SiteNav />
+    <SiteNav active="talents" />
 
     <main>
       <section class="wrap phead">
-        <h1>FDE 团队与认证体系</h1>
-        <p class="lead"><span>组织里不缺会写代码的人，缺的是<b>能把业务判断写成评测标准的人</b>。</span><span>认证口径：TIIDA（国际数据与人工智能研究院）CFDE 三级体系。</span></p>
+        <h1>{{ COPY.heading }}</h1>
+        <p class="lead">{{ COPY.lead }}</p>
         <div class="pstats">
-          <div><b>{{ stats.talentCount }}</b><span>FDE 在册</span></div>
-          <div><b>{{ stats.levelCount }}</b><span>认证等级</span></div>
-          <div><b>{{ stats.industryCount }}</b><span>覆盖行业</span></div>
-          <div><b>{{ stats.standardCount }}</b><span>识别标准</span></div>
+          <div><b>{{ stats.talentCount }}</b><span>{{ COPY.stats.talent }}</span></div>
+          <div><b>{{ stats.levelCount }}</b><span>{{ COPY.stats.level }}</span></div>
+          <div><b>{{ stats.industryCount }}</b><span>{{ COPY.stats.industry }}</span></div>
+          <div><b>{{ stats.standardCount }}</b><span>{{ COPY.stats.standard }}</span></div>
         </div>
       </section>
 
-      <section class="wrap">
+      <section v-if="levels.length" class="wrap">
         <div class="levelbar">
           <div v-for="lv in levels" :key="lv.code" class="lv" :class="lv.code.toLowerCase()">
             <div class="lv-top">
               <span class="lv-tag">CFDE-{{ lv.code }}</span>
               <span class="lv-name">{{ lv.label }}</span>
-              <span class="lv-num">{{ lv.count }} 人</span>
+              <span class="lv-num">{{ lv.count }} {{ COPY.levelUnit }}</span>
             </div>
             <p v-html="lv.definition"></p>
           </div>
@@ -33,14 +33,14 @@
           <input
             v-model="searchInput"
             type="search"
-            placeholder="搜姓名、行业、技能"
+            :placeholder="COPY.searchPlaceholder"
             autocomplete="off"
             @input="onSearchInput"
           />
         </div>
         <div class="chips">
           <button
-            v-for="opt in levelOptions"
+            v-for="opt in COPY.levels"
             :key="opt.value"
             class="chip"
             :class="{ on: level === opt.value }"
@@ -50,9 +50,7 @@
         </div>
         <div class="tb-right">
           <select v-model="sort" class="sort" @change="reload">
-            <option value="cases">按案例数</option>
-            <option value="years">按年资</option>
-            <option value="level">按等级</option>
+            <option v-for="opt in COPY.sorts" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
           </select>
           <div class="viewsw">
             <button
@@ -83,77 +81,88 @@
 
       <section class="wrap roster">
         <div class="rhead">
-          <h2>FDE 团队</h2>
-          <span class="count">共 {{ pageData.total }} 位</span>
+          <h2>{{ COPY.rosterTitle }}</h2>
+          <span class="count">{{ COPY.total(pageData.total) }}</span>
         </div>
 
         <div class="cards" :hidden="view !== 'cards'">
-          <article v-for="item in records" :key="item.slug" class="card">
+          <RouterLink
+            v-for="item in records"
+            :key="item.slug"
+            class="card"
+            :to="`/talents/${item.slug}`"
+          >
             <div class="ctop">
               <span class="ava" :class="levelClass(item)">{{ initial(item.name) }}</span>
-              <div>
-                <div class="nm"><b>{{ item.name }}</b><span class="badge" :class="levelClass(item)">CFDE-{{ item.level }}</span></div>
-                <div class="role">{{ item.role }}</div>
+              <div class="ctop-body">
+                <div class="nm">
+                  <b>{{ item.name }}</b>
+                  <span v-if="item.level" class="badge" :class="levelClass(item)">CFDE-{{ item.level }}</span>
+                </div>
+                <div v-if="item.role" class="role">{{ item.role }}</div>
               </div>
             </div>
-            <p class="bio">{{ item.bio }}</p>
-            <div class="tags">
-              <span v-for="tag in item.industries" :key="tag" class="ind">{{ tag }}</span>
+            <p v-if="item.bio" class="bio">{{ item.bio }}</p>
+            <div v-if="item.identityTags?.length" class="tags">
+              <span v-for="tag in item.identityTags.slice(0, 3)" :key="tag" class="ind">{{ tag }}</span>
             </div>
-            <div class="skl">
-              <span v-for="skill in item.skills.slice(0, 4)" :key="skill">{{ skill }}</span>
+            <div v-if="item.skills?.length" class="skl">
+              <span v-for="skill in item.skills.slice(0, 3)" :key="skill">{{ skill }}</span>
             </div>
             <div class="cfoot">
-              <span class="cnt">案例 <b>{{ item.caseCount }}</b></span>
-              <span class="yr">年资 <b>{{ item.years }}</b></span>
-              <RouterLink class="more" :to="`/talents/${item.slug}`">查看 <i>→</i></RouterLink>
+              <span v-if="item.caseCount > 0" class="cnt">{{ COPY.caseUnit }} <b>{{ item.caseCount }}</b></span>
+              <span v-if="item.years != null" class="yr">{{ COPY.yearsUnit }} <b>{{ item.years }}</b></span>
+              <span class="more">{{ COPY.view }} <i>→</i></span>
             </div>
-          </article>
-
-          <div v-if="showNote" class="notecard">
-            <p>以上人物页为<b>原型示例数据</b>，用于演示页面结构——正式版由 FDE 智研社人才库填充，入库须经认证与项目复核。</p>
-          </div>
+          </RouterLink>
         </div>
 
         <div :hidden="view !== 'table'">
           <table class="rt">
             <thead>
               <tr>
-                <th style="width:170px">姓名</th>
-                <th style="width:112px">等级</th>
-                <th>主攻方向</th>
-                <th style="width:74px">年资</th>
-                <th style="width:104px">案例</th>
-                <th style="width:62px"></th>
+                <th style="width:170px">{{ COPY.tableHeaders.name }}</th>
+                <th style="width:112px">{{ COPY.tableHeaders.level }}</th>
+                <th>{{ COPY.tableHeaders.headline }}</th>
+                <th style="width:74px">{{ COPY.tableHeaders.years }}</th>
+                <th style="width:86px">{{ COPY.tableHeaders.cases }}</th>
+                <th style="width:62px">{{ COPY.tableHeaders.action }}</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="item in records" :key="item.slug">
-                <td><div class="tname"><span class="mini" :class="levelClass(item)">{{ initial(item.name) }}</span><b>{{ item.name }}</b></div></td>
-                <td><span class="badge" :class="levelClass(item)">CFDE-{{ item.level }}</span></td>
+                <td>
+                  <div class="tname">
+                    <span class="mini" :class="levelClass(item)">{{ initial(item.name) }}</span>
+                    <b>{{ item.name }}</b>
+                  </div>
+                </td>
+                <td>
+                  <span v-if="item.level" class="badge" :class="levelClass(item)">CFDE-{{ item.level }}</span>
+                </td>
                 <td class="dir">{{ item.role }}</td>
-                <td class="n">{{ item.years }} 年</td>
-                <td class="n">{{ item.caseCount }}</td>
-                <td><RouterLink class="go" :to="`/talents/${item.slug}`">查看 →</RouterLink></td>
+                <td class="n">{{ item.years != null ? COPY.yearsValue(item.years) : '' }}</td>
+                <td class="n">{{ item.caseCount > 0 ? item.caseCount : '' }}</td>
+                <td><RouterLink class="go" :to="`/talents/${item.slug}`">{{ COPY.view }} →</RouterLink></td>
               </tr>
             </tbody>
           </table>
         </div>
 
         <div v-if="!records.length && !loading && !error" class="empty">
-          <b>没有符合条件的人</b>
-          <span>换个关键词，或切回「全部等级」</span>
+          <b>{{ COPY.emptyTitle }}</b>
+          <span>{{ COPY.emptyHint }}</span>
         </div>
 
         <div v-if="hasMore" class="more-row">
           <button class="load-more" type="button" :disabled="loadingMore" @click="loadMore">
-            {{ loadingMore ? '加载中…' : '加载更多' }}
+            {{ loadingMore ? COPY.loadingMore : COPY.loadMore }}
           </button>
         </div>
 
-        <p v-if="error" class="notice">{{ error }} <button type="button" @click="reload">重试</button></p>
-        <p v-if="loading && !records.length" class="loading-line">正在加载…</p>
-        <p v-else-if="loading" class="loading-line soft">更新中…</p>
+        <p v-if="error" class="notice">{{ error }} <button type="button" @click="reload">{{ COPY.retry }}</button></p>
+        <p v-if="loading && !records.length" class="loading-line">{{ COPY.loading }}</p>
+        <p v-else-if="loading" class="loading-line soft">{{ COPY.updating }}</p>
       </section>
     </main>
 
@@ -166,15 +175,9 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import SiteNav from '../components/SiteNav.vue'
 import SiteFooter from '../components/SiteFooter.vue'
 import { fetchRoster } from '../api/talent'
+import { LIST_COPY as COPY } from '../constants/copy'
 
 const SIZE = 12
-
-const levelOptions = [
-  { value: 'all', label: '全部等级' },
-  { value: 'M', label: '大师 M' },
-  { value: 'P', label: '专业 P' },
-  { value: 'A', label: '助理 A' },
-]
 
 const searchInput = ref('')
 const q = ref('')
@@ -205,15 +208,6 @@ function levelClass(item) {
 
 const hasMore = computed(() => Number(pageData.value.total) > records.value.length)
 
-const showNote = computed(() => {
-  const total = Number(pageData.value.total)
-  return view.value === 'cards'
-    && !q.value.trim()
-    && level.value === 'all'
-    && total === records.value.length
-    && total % 3 !== 0
-})
-
 async function loadPage(targetPage, append) {
   const seq = ++requestSeq
   if (append) loadingMore.value = true
@@ -236,7 +230,7 @@ async function loadPage(targetPage, append) {
     currentPage.value = targetPage
   } catch (err) {
     if (seq !== requestSeq) return
-    error.value = err?.message || '加载失败'
+    error.value = err?.message || COPY.listFailed
   } finally {
     if (seq === requestSeq) {
       loading.value = false
@@ -270,7 +264,7 @@ function loadMore() {
 }
 
 onMounted(() => {
-  document.title = 'FDE 团队与认证体系 · FDE 智研社'
+  document.title = `${COPY.heading} · FDE 智研社`
   reload()
 })
 
@@ -340,15 +334,6 @@ h1 {
   line-height: 1.95;
   max-width: 640px;
   margin-top: 20px;
-}
-
-.phead .lead b {
-  color: var(--ink);
-  font-weight: 500;
-}
-
-.phead .lead span {
-  display: block;
 }
 
 .pstats {
@@ -641,6 +626,11 @@ select.sort {
   box-shadow: 0 28px 56px -32px rgba(80, 110, 200, .44);
 }
 
+.card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .ctop {
   display: flex;
   gap: 12px;
@@ -676,10 +666,15 @@ select.sort {
   box-shadow: 0 8px 16px -10px rgba(23, 116, 74, .75);
 }
 
+.ctop-body {
+  min-width: 0;
+}
+
 .nm {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .nm b {
@@ -696,6 +691,7 @@ select.sort {
   padding: 2.5px 7px;
   border-radius: 5px;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .badge.m {
@@ -777,23 +773,15 @@ select.sort {
   border-top: 1px solid var(--line);
 }
 
-.cfoot .cnt {
-  font-size: 12px;
-  color: var(--muted);
-}
-
-.cfoot .cnt b {
-  color: var(--ink);
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
+.cfoot .cnt,
 .cfoot .yr {
   font-size: 12px;
   color: var(--muted);
 }
 
+.cfoot .cnt b,
 .cfoot .yr b {
+  color: var(--ink);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
@@ -813,39 +801,6 @@ select.sort {
 
 .card:hover .cfoot .more i {
   transform: translateX(3px);
-}
-
-/* 名录人数未满时的补充说明位：只占位，不做点击 */
-.notecard {
-  grid-column: span 2;
-  background: rgba(255, 255, 255, .5);
-  border: 1px dashed #d3dcec;
-  border-radius: 16px;
-  box-shadow: none;
-  padding: 26px 30px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-}
-
-.notecard:hover {
-  transform: none;
-  border-color: #d3dcec;
-  box-shadow: none;
-}
-
-.notecard p {
-  font-size: 12.5px;
-  line-height: 1.95;
-  color: var(--muted);
-  max-width: 520px;
-}
-
-.notecard b {
-  color: var(--ink-soft);
-  font-weight: 500;
 }
 
 /* ===== 列表视图 ===== */
@@ -915,6 +870,7 @@ table.rt .n {
 
 table.rt .go {
   color: var(--accent);
+  white-space: nowrap;
 }
 
 .empty {
@@ -934,7 +890,6 @@ table.rt .go {
   font-weight: 500;
 }
 
-/* ===== 本轮唯一新增的视觉元素：加载更多 ===== */
 .more-row {
   display: flex;
   justify-content: center;
@@ -996,10 +951,6 @@ table.rt .go {
   .cards {
     grid-template-columns: repeat(2, 1fr);
   }
-
-  .notecard {
-    grid-column: span 2;
-  }
 }
 
 @media (max-width: 760px) {
@@ -1009,10 +960,6 @@ table.rt .go {
 
   .cards {
     grid-template-columns: 1fr;
-  }
-
-  .notecard {
-    grid-column: span 1;
   }
 
   .levelbar {
@@ -1026,6 +973,17 @@ table.rt .go {
 
   .tb-right {
     margin-left: 0;
+    width: 100%;
+  }
+
+  .search {
+    flex: 1 1 auto;
+  }
+
+  table.rt {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
   }
 }
 </style>
