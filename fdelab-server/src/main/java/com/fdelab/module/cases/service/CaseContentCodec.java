@@ -27,6 +27,8 @@ public class CaseContentCodec {
     };
     private static final TypeReference<List<List<String>>> TUPLES_TYPE = new TypeReference<>() {
     };
+    private static final TypeReference<List<Long>> LONG_LIST_TYPE = new TypeReference<>() {
+    };
 
     private final ObjectMapper objectMapper;
 
@@ -69,6 +71,20 @@ public class CaseContentCodec {
             return testimony == null ? List.of() : testimony;
         } catch (JsonProcessingException ex) {
             log.warn("案例 testimony 解析失败，按空数组处理", ex);
+            return List.of();
+        }
+    }
+
+    /** contributor_ids 等 JSON 数字数组的读取入口。 */
+    public List<Long> readLongList(String json) {
+        if (!StringUtils.hasText(json)) {
+            return List.of();
+        }
+        try {
+            List<Long> values = objectMapper.readValue(json, LONG_LIST_TYPE);
+            return values == null ? List.of() : values;
+        } catch (JsonProcessingException ex) {
+            log.warn("案例数字数组解析失败，按空数组处理", ex);
             return List.of();
         }
     }

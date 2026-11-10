@@ -1,6 +1,7 @@
 package com.fdelab.module.cases.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 import java.util.ArrayList;
@@ -10,6 +11,21 @@ import java.util.List;
  * content_json 的结构。
  * <p>前台只消费 tech / ai / mgmt / kpis / timeline / org / metrics / csf / quotes / sources；
  * kpis[].m 是二期编辑器的技术标注，这里原样保留、不参与渲染。</p>
+ * <p>元组顺序（严格按序，不得调换）：</p>
+ * <pre>
+ * timeline : [阶段, 说明]
+ * org      : [角色, 配置/人数, 职责]
+ * metrics  : [指标名, 口径定义, 基线, 结果, 时间窗, 指标级可信度A-D, (可选)来源序号]
+ * csf      : [维度, 做法, 为什么重要, 缺失的后果]
+ * quotes   : [原文, 出处]
+ * sources  : [标题, URL, 来源类型]
+ * </pre>
+ * <p>两条后台约定：</p>
+ * <ol>
+ *   <li>metrics 第 7 位为来源序号（1-based，指向 sources 下标）；前台只读 row[0..5]，
+ *       不填时只存 6 位。</li>
+ *   <li>kpis[].m 为本案例 metrics 的数组下标（0-based）；前台不渲染，后台必须维护正确。</li>
+ * </ol>
  */
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -25,6 +41,12 @@ public class CaseContent {
     private List<List<String>> csf;
     private List<List<String>> quotes;
     private List<List<String>> sources;
+
+    /**
+     * 段落状态预留键。后台本期只在保存时原样透传，不生成、不修改、不展示。
+     */
+    @JsonProperty("_review")
+    private Object review;
 
     /** 把 JSON 里缺失或显式 null 的字段归一成空数组，避免 VO 层空指针。 */
     public void normalize() {

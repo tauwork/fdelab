@@ -99,4 +99,11 @@ public interface FdeCaseMapper extends BaseMapper<FdeCase> {
               AND published = 1
             """)
     long countPublic();
+
+    /**
+     * 后台生成下一个编号时使用：包含软删记录，避免复用已占用的唯一键。
+     * <p>这是后台写入路径，不参与公开接口。</p>
+     */
+    @Select("SELECT code FROM fde_case")
+    List<String> selectAllCodes();
 }
