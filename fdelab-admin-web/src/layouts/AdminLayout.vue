@@ -2,7 +2,7 @@
   <el-container class="layout">
     <el-aside width="220px" class="aside">
       <div class="brand">FDELab</div>
-      <el-menu router :default-active="route.path" background-color="#17241e" text-color="#d5e0d8" active-text-color="#9ddec0">
+      <el-menu router :default-active="activeMenu" background-color="#17241e" text-color="#d5e0d8" active-text-color="#9ddec0">
         <el-menu-item index="/dashboard">
           <el-icon><Odometer /></el-icon>
           <span>概览</span>
@@ -10,6 +10,10 @@
         <el-menu-item index="/talents">
           <el-icon><Avatar /></el-icon>
           <span>人才</span>
+        </el-menu-item>
+        <el-menu-item index="/cases">
+          <el-icon><Files /></el-icon>
+          <span>案例</span>
         </el-menu-item>
         <el-menu-item index="/system/users">
           <el-icon><User /></el-icon>
@@ -37,14 +41,16 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Avatar, Odometer, User } from '@element-plus/icons-vue'
+import { Avatar, Files, Odometer, User } from '@element-plus/icons-vue'
 import { logout } from '../api/auth'
 import { useUserStore } from '../stores/user'
 
 const route = useRoute()
 const router = useRouter()
 const store = useUserStore()
+const activeMenu = computed(() => (route.path.startsWith('/cases') ? '/cases' : route.path))
 
 async function onCommand(command) {
   if (command !== 'logout') return

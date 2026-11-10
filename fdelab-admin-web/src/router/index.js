@@ -5,6 +5,8 @@ import LoginView from '../views/login/LoginView.vue'
 import DashboardView from '../views/dashboard/DashboardView.vue'
 import UserView from '../views/system/UserView.vue'
 import TalentView from '../views/talent/TalentView.vue'
+import CaseListView from '../views/case/CaseListView.vue'
+import CaseEditView from '../views/case/CaseEditView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -22,6 +24,9 @@ const router = createRouter({
         { path: '', redirect: '/dashboard' },
         { path: 'dashboard', name: 'dashboard', component: DashboardView, meta: { title: '概览' } },
         { path: 'talents', name: 'talents', component: TalentView, meta: { title: '人才' } },
+        { path: 'cases', name: 'cases', component: CaseListView, meta: { title: '案例' } },
+        { path: 'cases/new', name: 'case-new', component: CaseEditView, meta: { title: '新建案例' } },
+        { path: 'cases/:id/edit', name: 'case-edit', component: CaseEditView, meta: { title: '编辑案例' } },
         { path: 'system/users', name: 'users', component: UserView, meta: { title: '用户' } },
       ],
     },
