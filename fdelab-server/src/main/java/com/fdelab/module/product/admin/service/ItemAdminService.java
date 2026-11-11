@@ -76,23 +76,25 @@ public class ItemAdminService {
     @Transactional
     public ItemAdminVO create(ItemForm form) {
         validate(form);
-        String code = form.code().trim();
-        if (itemMapper.selectCount(Wrappers.<FdeProductItem>lambdaQuery()
-                .eq(FdeProductItem::getCode, code)) > 0) {
-            throw new BizException(422, "业务码已存在");
-        }
+        FdeProductForm product = productMapper.selectById(form.productId());
+        String prefix = codePrefix(product);
         FdeProductItem entity = new FdeProductItem();
-        entity.setCode(code);
         apply(entity, form);
         entity.setSortOrder(nextSortOrder());
         // 新建一律落草稿，发布只能走 publish 接口。
         entity.setPublished(0);
-        try {
-            itemMapper.insert(entity);
-        } catch (DuplicateKeyException ex) {
-            throw new BizException(422, "业务码已存在");
+        // 业务码由服务端生成；并发下若被抢占，重取一次最大号再试。
+        for (int attempt = 0; attempt < 5; attempt++) {
+            entity.setId(null);
+            entity.setCode(nextCode(prefix));
+            try {
+                itemMapper.insert(entity);
+                return toVO(entity);
+            } catch (DuplicateKeyException ignored) {
+                // 唯一索引兜底，下一轮重新取号。
+            }
         }
-        return toVO(entity);
+        throw new BizException(409, "业务码生成冲突，请重试");
     }
 
     @Transactional
@@ -145,16 +147,13 @@ public class ItemAdminService {
         if (form == null) {
             throw new BizException(422, "表单不能为空");
         }
-        if (!StringUtils.hasText(form.code())) {
-            throw new BizException(422, "业务码不能为空");
-        }
         if (form.productId() == null) {
             throw new BizException(422, "所属运作不能为空");
         }
         requireText(form.kind(), "形态不能为空");
-        requireText(form.name(), "条目名不能为空");
+        requireText(form.name(), "产品名不能为空");
         requireText(form.status(), "能力状态不能为空");
-        requireText(form.summary(), "一句话说明不能为空");
+        requireText(form.summary(), "产品介绍不能为空");
         requireText(form.cycle(), "周期不能为空");
         requireText(form.pricing(), "计价不能为空");
 
@@ -208,9 +207,29 @@ public class ItemAdminService {
     private FdeProductItem require(Long id) {
         FdeProductItem entity = id == null ? null : itemMapper.selectById(id);
         if (entity == null) {
-            throw new BizException(404, "条目不存在");
+            throw new BizException(404, "产品不存在");
         }
         return entity;
+    }
+
+    /**
+     * 条目业务码沿用「运作序号 → 字母」的既有约定：F1→A、F2→B…，
+     * 非 F{n} 形态的运作统一用 P 前缀。
+     */
+    private String codePrefix(FdeProductForm product) {
+        String code = product == null ? null : product.getCode();
+        if (code != null && code.matches("F\\d{1,2}")) {
+            int no = Integer.parseInt(code.substring(1));
+            if (no >= 1 && no <= 26) {
+                return String.valueOf((char) ('A' + no - 1));
+            }
+        }
+        return "P";
+    }
+
+    private String nextCode(String prefix) {
+        Integer max = itemMapper.maxCodeSuffix(prefix, prefix.length());
+        return prefix + (max == null ? 1 : max + 1);
     }
 
     private int nextSortOrder() {
