@@ -7,6 +7,7 @@ import UserView from '../views/system/UserView.vue'
 import TalentView from '../views/talent/TalentView.vue'
 import CaseListView from '../views/case/CaseListView.vue'
 import CaseEditView from '../views/case/CaseEditView.vue'
+import ProductServiceAdminView from '../views/product/ProductServiceAdminView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -27,6 +28,7 @@ const router = createRouter({
         { path: 'cases', name: 'cases', component: CaseListView, meta: { title: '案例' } },
         { path: 'cases/new', name: 'case-new', component: CaseEditView, meta: { title: '新建案例' } },
         { path: 'cases/:id/edit', name: 'case-edit', component: CaseEditView, meta: { title: '编辑案例' } },
+        { path: 'products', name: 'products', component: ProductServiceAdminView, meta: { title: '产品与服务' } },
         { path: 'system/users', name: 'users', component: UserView, meta: { title: '用户' } },
       ],
     },

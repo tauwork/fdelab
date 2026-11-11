@@ -15,6 +15,10 @@
           <el-icon><Files /></el-icon>
           <span>案例</span>
         </el-menu-item>
+        <el-menu-item index="/products">
+          <el-icon><Goods /></el-icon>
+          <span>产品与服务</span>
+        </el-menu-item>
         <el-menu-item index="/system/users">
           <el-icon><User /></el-icon>
           <span>用户</span>
@@ -43,7 +47,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Avatar, Files, Odometer, User } from '@element-plus/icons-vue'
+import { Avatar, Files, Goods, Odometer, User } from '@element-plus/icons-vue'
 import { logout } from '../api/auth'
 import { useUserStore } from '../stores/user'
 
