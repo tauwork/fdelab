@@ -1,7 +1,7 @@
 <template>
   <el-container class="layout">
     <el-aside width="220px" class="aside">
-      <div class="brand">FDELab</div>
+      <div class="brand">FDE智研社</div>
       <el-menu router :default-active="activeMenu" background-color="#17241e" text-color="#d5e0d8" active-text-color="#9ddec0">
         <el-menu-item index="/dashboard">
           <el-icon><Odometer /></el-icon>
@@ -16,7 +16,7 @@
           <span>案例</span>
         </el-menu-item>
         <el-menu-item index="/products">
-          <el-icon><Goods /></el-icon>
+          <el-icon><Box /></el-icon>
           <span>产品与服务</span>
         </el-menu-item>
         <el-menu-item index="/system/users">
@@ -27,7 +27,7 @@
     </el-aside>
     <el-container>
       <el-header class="header">
-        <strong>{{ route.meta.title || 'FDELab' }}</strong>
+        <strong>{{ route.meta.title || 'FDE智研社' }}</strong>
         <el-dropdown @command="onCommand">
           <span class="user">{{ store.profile?.nickname || '账号' }}</span>
           <template #dropdown>
@@ -47,7 +47,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Avatar, Files, Goods, Odometer, User } from '@element-plus/icons-vue'
+import { Avatar, Box, Files, Odometer, User } from '@element-plus/icons-vue'
 import { logout } from '../api/auth'
 import { useUserStore } from '../stores/user'
 

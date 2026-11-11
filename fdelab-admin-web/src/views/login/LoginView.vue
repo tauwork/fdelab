@@ -1,7 +1,7 @@
 <template>
   <div class="login">
     <section class="panel">
-      <p class="mark">FDELab</p>
+      <p class="mark">FDE智研社</p>
       <h1>管理后台</h1>
       <p class="lead">用户、内容和后续业务模块从这里进入。</p>
     </section>

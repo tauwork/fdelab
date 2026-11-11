@@ -75,9 +75,12 @@
 
     <el-drawer v-model="drawer" :title="form.id ? `编辑产品 · ${form.code}` : '新建产品'" size="720px" destroy-on-close>
       <el-form ref="formRef" :model="form" :rules="rules" label-width="96px">
-        <el-form-item label="业务码" prop="code">
-          <el-input v-model="form.code" :disabled="!!form.id" placeholder="如 B6，唯一业务码" />
-          <div class="hint">系统必填：唯一业务码，站点路由按它访问。</div>
+        <el-form-item v-if="form.id" label="业务码">
+          <el-input v-model="form.code" disabled />
+          <div class="hint">系统生成，创建后不可修改；站点路由按它访问。</div>
+        </el-form-item>
+        <el-form-item v-else label="业务码">
+          <el-tag type="info" size="small" effect="plain">保存后由系统自动生成</el-tag>
         </el-form-item>
         <el-form-item label="所属运作" prop="productId">
           <el-select v-model="form.productId" placeholder="选择 F1–F4">
@@ -182,7 +185,6 @@ const form = reactive({
 })
 
 const rules = {
-  code: [{ required: true, message: '业务码不能为空', trigger: 'blur' }],
   productId: [{ required: true, message: '所属运作不能为空', trigger: 'change' }],
   kind: [{ required: true, message: '形态不能为空', trigger: 'change' }],
   name: [{ required: true, message: '产品名不能为空', trigger: 'blur' }],
@@ -314,7 +316,6 @@ async function submit() {
   }
 
   const payload = {
-    code: form.code,
     productId: form.productId,
     kind: form.kind,
     name: form.name,
@@ -327,12 +328,8 @@ async function submit() {
 
   saving.value = true
   try {
-    if (form.id) {
-      await updateItem(form.id, payload)
-    } else {
-      await createItem(payload)
-    }
-    ElMessage.success('已保存，待复核')
+    const saved = form.id ? await updateItem(form.id, payload) : await createItem(payload)
+    ElMessage.success(!form.id && saved?.code ? `已保存，业务码 ${saved.code}` : '已保存，待复核')
     drawer.value = false
     load()
   } catch (error) {
