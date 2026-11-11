@@ -89,24 +89,24 @@ public class ProductFormAdminService {
     @Transactional
     public ProductFormAdminVO create(ProductFormRequest request) {
         validate(request);
-        String code = request.code().trim();
-        if (formMapper.selectCount(Wrappers.<FdeProductForm>lambdaQuery()
-                .eq(FdeProductForm::getCode, code)) > 0) {
-            throw new BizException(422, "业务码已存在");
-        }
         FdeProductForm entity = new FdeProductForm();
-        entity.setCode(code);
         apply(entity, request);
         if (entity.getSortOrder() == null) {
             entity.setSortOrder(nextSortOrder());
         }
         entity.setPublished(0);
-        try {
-            formMapper.insert(entity);
-        } catch (DuplicateKeyException ex) {
-            throw new BizException(422, "业务码已存在");
+        // 业务码由服务端生成；并发下若被抢占，重取一次最大号再试。
+        for (int attempt = 0; attempt < 5; attempt++) {
+            entity.setId(null);
+            entity.setCode(nextCode());
+            try {
+                formMapper.insert(entity);
+                return toVO(entity);
+            } catch (DuplicateKeyException ignored) {
+                // 唯一索引兜底，下一轮重新取号。
+            }
         }
-        return toVO(entity);
+        throw new BizException(409, "业务码生成冲突，请重试");
     }
 
     @Transactional
@@ -146,7 +146,6 @@ public class ProductFormAdminService {
         if (request == null) {
             throw new BizException(422, "表单不能为空");
         }
-        requireText(request.code(), "业务码不能为空");
         requireText(request.name(), "名称不能为空");
         requireText(request.form(), "运作标签不能为空");
         requireText(request.description(), "说明不能为空");
@@ -208,6 +207,11 @@ public class ProductFormAdminService {
             throw new BizException(404, "服务运作不存在");
         }
         return entity;
+    }
+
+    private String nextCode() {
+        Integer max = formMapper.maxCodeSuffix("F", 1);
+        return "F" + (max == null ? 1 : max + 1);
     }
 
     private int nextSortOrder() {
