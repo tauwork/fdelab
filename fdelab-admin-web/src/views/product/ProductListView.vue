@@ -75,13 +75,6 @@
 
     <el-drawer v-model="drawer" :title="form.id ? `编辑产品 · ${form.code}` : '新建产品'" size="720px" destroy-on-close>
       <el-form ref="formRef" :model="form" :rules="rules" label-width="96px">
-        <el-form-item v-if="form.id" label="业务码">
-          <el-input v-model="form.code" disabled />
-          <div class="hint">系统生成，创建后不可修改；站点路由按它访问。</div>
-        </el-form-item>
-        <el-form-item v-else label="业务码">
-          <el-tag type="info" size="small" effect="plain">保存后由系统自动生成</el-tag>
-        </el-form-item>
         <el-form-item label="所属运作" prop="productId">
           <el-select v-model="form.productId" placeholder="选择 F1–F4">
             <el-option

@@ -78,11 +78,6 @@
       destroy-on-close
     >
       <el-form ref="formRef" :model="form" :rules="rules" label-width="110px">
-        <el-form-item label="业务码" prop="code">
-          <el-input v-model="form.code" :disabled="!!form.id" placeholder="如 F5，唯一业务码" />
-          <div class="hint">系统必填：站点运作详情按它访问，创建后不可改。</div>
-        </el-form-item>
-
         <el-divider content-position="left">卡片字段</el-divider>
         <el-form-item label="名称" prop="name">
           <el-input v-model="form.name" />
@@ -205,7 +200,6 @@ const form = reactive({
 })
 
 const rules = {
-  code: [{ required: true, message: '业务码不能为空', trigger: 'blur' }],
   name: [{ required: true, message: '名称不能为空', trigger: 'blur' }],
   form: [{ required: true, message: '运作标签不能为空', trigger: 'blur' }],
   description: [{ required: true, message: '说明不能为空', trigger: 'blur' }],
@@ -316,7 +310,6 @@ async function submit() {
   }
 
   const payload = {
-    code: form.code,
     name: form.name,
     form: form.form,
     weight: form.weight,
@@ -335,12 +328,8 @@ async function submit() {
 
   saving.value = true
   try {
-    if (form.id) {
-      await updateForm(form.id, payload)
-    } else {
-      await createForm(payload)
-    }
-    ElMessage.success('已保存，待复核')
+    const saved = form.id ? await updateForm(form.id, payload) : await createForm(payload)
+    ElMessage.success(!form.id && saved?.code ? `已保存，业务码 ${saved.code}` : '已保存，待复核')
     drawer.value = false
     load()
   } catch (error) {
