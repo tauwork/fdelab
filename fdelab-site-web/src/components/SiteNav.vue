@@ -6,7 +6,7 @@
         <RouterLink to="/" exact-active-class="on">首页</RouterLink>
         <RouterLink to="/articles" active-class="on">案例库</RouterLink>
         <RouterLink to="/talents" active-class="on" :class="{ on: active === 'talents' }">FDE 团队</RouterLink>
-        <RouterLink to="/products" active-class="on">产品线</RouterLink>
+        <RouterLink to="/products" active-class="on">产品与服务</RouterLink>
         <RouterLink to="/sites" active-class="on">网点</RouterLink>
         <RouterLink to="/vendors" active-class="on">供应商</RouterLink>
       </nav>
